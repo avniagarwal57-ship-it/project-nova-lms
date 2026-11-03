@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { Sparkles, GraduationCap, BookOpen, Shield, ArrowRight, UserPlus, LogIn, Check } from 'lucide-react';
+import { Sparkles, GraduationCap, BookOpen, Shield, ArrowRight, UserPlus, LogIn, Check, Compass } from 'lucide-react';
 import { playSuccessSound } from '../utils/sound';
 
 interface AuthPageProps {
@@ -72,62 +72,62 @@ export const AuthPage: React.FC<AuthPageProps> = ({ setActiveTab }) => {
 
   return (
     <div className="min-h-[85vh] flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <div className="w-full max-w-md space-y-8">
+      <div className="w-full max-w-md space-y-8 animate-fadeIn">
         {/* Header */}
         <div className="text-center">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-indigo-600 via-purple-600 to-pink-500 flex items-center justify-center text-white mx-auto shadow-lg shadow-indigo-500/30 mb-4">
-            <Sparkles className="w-6 h-6" />
+          <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-cyan-500 via-indigo-600 to-violet-500 flex items-center justify-center text-white mx-auto shadow-xl shadow-cyan-500/30 mb-4">
+            <Sparkles className="w-7 h-7" />
           </div>
-          <h2 className="text-3xl font-extrabold text-slate-900 dark:text-white">
-            {isSignup ? 'Create your QuestLearn account' : 'Welcome back to QuestLearn'}
+          <h2 className="text-3xl font-extrabold text-white">
+            {isSignup ? 'Enlist in PROJECT NOVA' : 'Welcome to the Universe'}
           </h2>
-          <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
+          <p className="mt-2 text-sm text-slate-400">
             {isSignup
-              ? 'Join our gamified learning community today'
-              : 'Pick up right where you left off on your streak'}
+              ? 'Join our gamified learning cosmos today'
+              : 'Command Center access protocol'}
           </p>
         </div>
 
-        {/* Demo Fast-Login Cards for Quick Evaluation */}
-        <div className="p-4 rounded-2xl bg-indigo-50/80 dark:bg-indigo-950/40 border border-indigo-200/80 dark:border-indigo-800/80">
-          <div className="text-xs font-bold uppercase tracking-wider text-indigo-700 dark:text-indigo-300 mb-3 text-center">
-            ⚡ Quick Demo Logins (Instant Access)
+        {/* Demo Fast-Login Cards for Instant Access */}
+        <div className="p-4 rounded-2xl bg-slate-900/90 border border-cyan-500/30 backdrop-blur-md shadow-xl">
+          <div className="text-[10px] font-extrabold uppercase tracking-widest text-cyan-400 mb-3 text-center">
+            ⚡ Instant Persona Access (1-Click Evaluation)
           </div>
           <div className="grid grid-cols-3 gap-2">
             <button
               type="button"
               onClick={() => handleQuickLogin('learner')}
-              className="p-2.5 rounded-xl bg-white dark:bg-slate-800 hover:border-indigo-500 border border-slate-200 dark:border-slate-700 text-center transition-all group flex flex-col items-center shadow-sm"
+              className="p-3 rounded-xl bg-slate-800 hover:bg-slate-700/80 border border-slate-700 text-center transition-all group flex flex-col items-center"
             >
-              <GraduationCap className="w-5 h-5 text-indigo-500 mb-1 group-hover:scale-110 transition-transform" />
-              <span className="text-xs font-bold text-slate-800 dark:text-slate-200">Alex</span>
-              <span className="text-[10px] text-slate-400">Learner</span>
+              <GraduationCap className="w-5 h-5 text-cyan-400 mb-1 group-hover:scale-110 transition-transform" />
+              <div className="text-xs font-bold text-white">Alex Rivers</div>
+              <div className="text-[10px] text-cyan-400">Learner</div>
             </button>
             <button
               type="button"
               onClick={() => handleQuickLogin('instructor')}
-              className="p-2.5 rounded-xl bg-white dark:bg-slate-800 hover:border-purple-500 border border-slate-200 dark:border-slate-700 text-center transition-all group flex flex-col items-center shadow-sm"
+              className="p-3 rounded-xl bg-slate-800 hover:bg-slate-700/80 border border-slate-700 text-center transition-all group flex flex-col items-center"
             >
-              <BookOpen className="w-5 h-5 text-purple-500 mb-1 group-hover:scale-110 transition-transform" />
-              <span className="text-xs font-bold text-slate-800 dark:text-slate-200">Dr. Sarah</span>
-              <span className="text-[10px] text-slate-400">Instructor</span>
+              <BookOpen className="w-5 h-5 text-purple-400 mb-1 group-hover:scale-110 transition-transform" />
+              <div className="text-xs font-bold text-white">Dr. Sarah Chen</div>
+              <div className="text-[10px] text-purple-400">Instructor</div>
             </button>
             <button
               type="button"
               onClick={() => handleQuickLogin('admin')}
-              className="p-2.5 rounded-xl bg-white dark:bg-slate-800 hover:border-rose-500 border border-slate-200 dark:border-slate-700 text-center transition-all group flex flex-col items-center shadow-sm"
+              className="p-3 rounded-xl bg-slate-800 hover:bg-slate-700/80 border border-slate-700 text-center transition-all group flex flex-col items-center"
             >
-              <Shield className="w-5 h-5 text-rose-500 mb-1 group-hover:scale-110 transition-transform" />
-              <span className="text-xs font-bold text-slate-800 dark:text-slate-200">Marcus</span>
-              <span className="text-[10px] text-slate-400">Admin</span>
+              <Shield className="w-5 h-5 text-rose-400 mb-1 group-hover:scale-110 transition-transform" />
+              <div className="text-xs font-bold text-white">Marcus Vance</div>
+              <div className="text-[10px] text-rose-400">Universe Admin</div>
             </button>
           </div>
         </div>
 
-        {/* Custom Auth Form */}
-        <div className="bg-white dark:bg-slate-900 p-8 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xl">
+        {/* Form Container */}
+        <div className="p-8 rounded-3xl bg-slate-900/80 border border-slate-800 shadow-xl backdrop-blur-md">
           {error && (
-            <div className="mb-4 p-3 rounded-xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900 text-rose-600 dark:text-rose-300 text-xs font-semibold">
+            <div className="mb-4 p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs font-semibold">
               {error}
             </div>
           )}
@@ -135,82 +135,90 @@ export const AuthPage: React.FC<AuthPageProps> = ({ setActiveTab }) => {
           <form onSubmit={handleSubmit} className="space-y-4">
             {isSignup && (
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-1.5">
-                  Full Name
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
+                  Explorer Name
                 </label>
                 <input
                   type="text"
+                  required
                   value={name}
                   onChange={e => setName(e.target.value)}
-                  placeholder="e.g. Jordan Lee"
-                  className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  placeholder="Commander Sarah Connor"
+                  className="w-full px-4 py-3 rounded-xl border border-slate-700 bg-slate-800/80 text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 text-xs sm:text-sm"
                 />
               </div>
             )}
 
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-1.5">
-                Email Address
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
+                Terminal Identifier (Email)
               </label>
               <input
                 type="email"
+                required
                 value={email}
                 onChange={e => setEmail(e.target.value)}
-                placeholder="you@domain.com"
-                className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                placeholder="cadet@nova.universe"
+                className="w-full px-4 py-3 rounded-xl border border-slate-700 bg-slate-800/80 text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 text-xs sm:text-sm"
               />
             </div>
 
             {isSignup && (
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-1.5">
-                  I want to join as
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
+                  Ecosystem Role
                 </label>
-                <select
-                  value={role}
-                  onChange={e => setRole(e.target.value as any)}
-                  className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                >
-                  <option value="learner">Student / Learner</option>
-                  <option value="instructor">Course Instructor</option>
-                  <option value="admin">Platform Administrator</option>
-                </select>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setRole('learner')}
+                    className={`py-2 px-3 rounded-xl text-xs font-bold border transition-all ${
+                      role === 'learner'
+                        ? 'bg-cyan-500/20 border-cyan-500 text-cyan-300'
+                        : 'bg-slate-800 border-slate-700 text-slate-400'
+                    }`}
+                  >
+                    Learner / Cadet
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setRole('instructor')}
+                    className={`py-2 px-3 rounded-xl text-xs font-bold border transition-all ${
+                      role === 'instructor'
+                        ? 'bg-purple-500/20 border-purple-500 text-purple-300'
+                        : 'bg-slate-800 border-slate-700 text-slate-400'
+                    }`}
+                  >
+                    Instructor / World Creator
+                  </button>
+                </div>
               </div>
             )}
 
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3 px-4 rounded-xl font-bold text-white bg-indigo-600 hover:bg-indigo-500 shadow-md shadow-indigo-600/30 transition-all flex items-center justify-center gap-2 mt-6"
+              className="w-full mt-4 py-3.5 px-4 rounded-xl font-extrabold text-slate-950 bg-gradient-to-r from-cyan-400 to-sky-300 hover:from-cyan-300 hover:to-sky-200 shadow-lg shadow-cyan-400/30 transition-all flex items-center justify-center gap-2 text-xs sm:text-sm"
             >
               {loading ? (
-                <span>Processing...</span>
-              ) : isSignup ? (
-                <>
-                  <UserPlus className="w-4 h-4" />
-                  <span>Create Account</span>
-                </>
+                <span>Calibrating...</span>
               ) : (
                 <>
-                  <LogIn className="w-4 h-4" />
-                  <span>Sign In</span>
+                  {isSignup ? <UserPlus className="w-4 h-4" /> : <LogIn className="w-4 h-4" />}
+                  <span>{isSignup ? 'Establish Neural ID' : 'Authenticate & Enter'}</span>
                 </>
               )}
             </button>
           </form>
 
-          <div className="mt-6 pt-6 border-t border-slate-100 dark:border-slate-800 text-center">
+          <div className="mt-6 text-center">
             <button
-              type="button"
-              onClick={() => {
-                setIsSignup(!isSignup);
-                setError('');
-              }}
-              className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline font-semibold"
+              onClick={() => setIsSignup(!isSignup)}
+              className="text-xs font-bold text-cyan-400 hover:underline"
             >
               {isSignup
-                ? 'Already have an account? Sign in here'
-                : "Don't have an account? Sign up free"}
+                ? 'Already have an ID? Enter Command Center'
+                : "Don't have an ID yet? Enlist in NOVA free"}
             </button>
           </div>
         </div>

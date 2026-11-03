@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import {
   Flame,
@@ -12,16 +12,49 @@ import {
   Brain,
   ShieldCheck,
   BookOpen,
+  Target,
+  Trophy,
+  Compass,
+  Radio,
+  CheckCircle2,
 } from 'lucide-react';
 import { playSuccessSound } from '../utils/sound';
+import { SkillRadarChart } from '../components/common/SkillRadarChart';
+import { SkillRadarItem, Achievement } from '../types';
 
 export const ProfilePage: React.FC = () => {
   const { user, soundEnabled, refreshUser } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [name, setName] = useState(user?.name || '');
   const [bio, setBio] = useState(user?.bio || '');
-  const [dailyGoalMinutes, setDailyGoalMinutes] = useState(user?.dailyGoalMinutes || 20);
+  const [dailyGoalMinutes, setDailyGoalMinutes] = useState(user?.dailyGoalMinutes || 25);
   const [saving, setSaving] = useState(false);
+  const [radarData, setRadarData] = useState<SkillRadarItem[]>([]);
+  const [achievements, setAchievements] = useState<Achievement[]>([]);
+
+  useEffect(() => {
+    fetchProfileData();
+  }, []);
+
+  const fetchProfileData = async () => {
+    try {
+      const [rRes, aRes] = await Promise.all([
+        fetch('/api/intelligence/radar'),
+        fetch('/api/achievements'),
+      ]);
+
+      if (rRes.ok) {
+        const rData = await rRes.json();
+        setRadarData(rData.radar || []);
+      }
+      if (aRes.ok) {
+        const aData = await aRes.json();
+        setAchievements(aData.achievements || []);
+      }
+    } catch (err) {
+      console.error('Failed to load profile intelligence:', err);
+    }
+  };
 
   const handleSave = async () => {
     setSaving(true);
@@ -43,26 +76,18 @@ export const ProfilePage: React.FC = () => {
     }
   };
 
-  const skills = [
-    { name: 'AI & Machine Learning', level: 85, color: 'from-indigo-600 to-purple-600' },
-    { name: 'Full-Stack Web Dev', level: 78, color: 'from-blue-600 to-cyan-500' },
-    { name: 'UI/UX Design Systems', level: 65, color: 'from-pink-600 to-rose-500' },
-    { name: 'Cloud & Distributed Systems', level: 60, color: 'from-emerald-600 to-teal-500' },
-    { name: 'Cybersecurity & OWASP', level: 52, color: 'from-amber-600 to-orange-500' },
-  ];
-
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 animate-fadeIn">
-      {/* Profile Header Card */}
-      <div className="p-8 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-6 relative overflow-hidden">
+      {/* Command Dossier Header Card */}
+      <div className="p-8 rounded-3xl bg-slate-900/80 border border-slate-800 shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-6 relative overflow-hidden backdrop-blur-xl">
         <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 text-center sm:text-left">
           <div className="relative">
             <img
               src={user?.avatar}
               alt={user?.name}
-              className="w-24 h-24 sm:w-28 sm:h-28 rounded-full object-cover ring-4 ring-indigo-500/30 shadow-lg"
+              className="w-24 h-24 sm:w-28 sm:h-28 rounded-3xl object-cover ring-4 ring-cyan-500/30 shadow-2xl"
             />
-            <span className="absolute -bottom-2 -right-2 px-2.5 py-0.5 rounded-full text-xs font-black bg-gradient-to-r from-amber-400 to-yellow-300 text-slate-950 shadow-md">
+            <span className="absolute -bottom-2 -right-2 px-2.5 py-0.5 rounded-full text-xs font-black bg-slate-950 border border-cyan-400 text-cyan-400 shadow-md">
               LVL {user?.level || 1}
             </span>
           </div>
@@ -74,40 +99,40 @@ export const ProfilePage: React.FC = () => {
                   type="text"
                   value={name}
                   onChange={e => setName(e.target.value)}
-                  className="px-3 py-1.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm font-bold w-full"
+                  className="px-3.5 py-2 rounded-xl border border-slate-700 bg-slate-800 text-sm font-bold text-white w-full"
                   placeholder="Your Name"
                 />
                 <textarea
                   value={bio}
                   onChange={e => setBio(e.target.value)}
                   rows={2}
-                  className="px-3 py-1.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs w-full"
+                  className="px-3.5 py-2 rounded-xl border border-slate-700 bg-slate-800 text-xs text-slate-300 w-full"
                   placeholder="Brief Bio / Goal"
                 />
-                <div className="flex items-center gap-2 text-xs">
-                  <span>Daily Goal:</span>
+                <div className="flex items-center gap-2 text-xs text-slate-400">
+                  <span>Daily Study Target:</span>
                   <input
                     type="number"
                     value={dailyGoalMinutes}
                     onChange={e => setDailyGoalMinutes(Number(e.target.value))}
-                    className="w-16 px-2 py-1 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs"
+                    className="w-16 px-2 py-1 rounded-lg border border-slate-700 bg-slate-800 text-xs text-white"
                   />
                   <span>minutes/day</span>
                 </div>
               </div>
             ) : (
               <>
-                <div className="flex items-center gap-2 justify-center sm:justify-start">
-                  <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white">
+                <div className="flex items-center gap-2.5 justify-center sm:justify-start">
+                  <h1 className="text-2xl sm:text-3xl font-extrabold text-white">
                     {user?.name}
                   </h1>
-                  <span className="px-2.5 py-0.5 text-xs font-bold uppercase rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800">
-                    {user?.role}
+                  <span className="px-2.5 py-0.5 text-xs font-extrabold uppercase rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-400">
+                    {user?.rankTitle || 'Cadet'}
                   </span>
                 </div>
-                <p className="text-xs text-slate-500 dark:text-slate-400">{user?.email}</p>
-                <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
-                  {user?.bio || 'Passionate lifelong learner expanding mastery across modern computer science.'}
+                <p className="text-xs text-slate-400 font-mono">{user?.email}</p>
+                <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
+                  {user?.bio || 'Pioneer Cadet navigating the NOVA Universe.'}
                 </p>
               </>
             )}
@@ -120,152 +145,148 @@ export const ProfilePage: React.FC = () => {
             <button
               onClick={handleSave}
               disabled={saving}
-              className="px-5 py-2.5 rounded-xl font-bold text-xs text-white bg-indigo-600 hover:bg-indigo-500 shadow-md flex items-center gap-1.5"
+              className="px-5 py-2.5 rounded-xl font-bold text-xs text-slate-950 bg-cyan-400 hover:bg-cyan-300 shadow-md flex items-center gap-1.5"
             >
               <Check className="w-4 h-4" />
-              <span>{saving ? 'Saving...' : 'Save Profile'}</span>
+              <span>{saving ? 'Updating...' : 'Save Dossier'}</span>
             </button>
           ) : (
             <button
               onClick={() => setIsEditing(true)}
-              className="px-5 py-2.5 rounded-xl font-bold text-xs text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 flex items-center gap-1.5 transition-colors"
+              className="px-5 py-2.5 rounded-xl font-bold text-xs text-slate-300 bg-slate-800 hover:bg-slate-700 border border-slate-700 flex items-center gap-1.5 transition-colors"
             >
               <Edit3 className="w-4 h-4" />
-              <span>Edit Profile</span>
+              <span>Edit Dossier</span>
             </button>
           )}
         </div>
       </div>
 
-      {/* Gamification Core Stats */}
+      {/* Core Stats Row */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm flex items-center gap-4">
+        <div className="p-5 rounded-3xl bg-slate-900/80 border border-slate-800 shadow-sm flex items-center gap-4">
           <div className="w-12 h-12 rounded-2xl bg-orange-500/10 text-orange-500 flex items-center justify-center shrink-0">
             <Flame className="w-6 h-6 fill-orange-500" />
           </div>
           <div>
             <div className="text-xs text-slate-400 font-semibold">Streak Record</div>
-            <div className="text-2xl font-extrabold text-slate-900 dark:text-white">
+            <div className="text-2xl font-extrabold text-white">
               {user?.streakDays || 1} Days
             </div>
-            <div className="text-[10px] text-orange-500 font-bold">Top 10% Consistency</div>
+            <div className="text-[10px] text-orange-400 font-bold">Top 5% Consistency</div>
           </div>
         </div>
 
-        <div className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm flex items-center gap-4">
+        <div className="p-5 rounded-3xl bg-slate-900/80 border border-slate-800 shadow-sm flex items-center gap-4">
           <div className="w-12 h-12 rounded-2xl bg-amber-500/10 text-amber-500 flex items-center justify-center shrink-0">
             <Zap className="w-6 h-6 fill-amber-500" />
           </div>
           <div>
-            <div className="text-xs text-slate-400 font-semibold">Total XP Earned</div>
-            <div className="text-2xl font-extrabold text-slate-900 dark:text-white">
+            <div className="text-xs text-slate-400 font-semibold">Total Experience</div>
+            <div className="text-2xl font-extrabold text-white">
               {user?.xp || 0} XP
             </div>
-            <div className="text-[10px] text-amber-500 font-bold">Tier 3 Master</div>
+            <div className="text-[10px] text-amber-400 font-bold">Level {user?.level || 1} Explorer</div>
           </div>
         </div>
 
-        <div className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center shrink-0">
+        <div className="p-5 rounded-3xl bg-slate-900/80 border border-slate-800 shadow-sm flex items-center gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-cyan-500/10 text-cyan-400 flex items-center justify-center shrink-0">
             <Award className="w-6 h-6" />
           </div>
           <div>
-            <div className="text-xs text-slate-400 font-semibold">Quiz Accuracy</div>
-            <div className="text-2xl font-extrabold text-slate-900 dark:text-white">
-              94.2%
+            <div className="text-xs text-slate-400 font-semibold">Quests Completed</div>
+            <div className="text-2xl font-extrabold text-white">
+              5 Missions
             </div>
-            <div className="text-[10px] text-emerald-500 font-bold">Passed 4 of 4 Quizzes</div>
+            <div className="text-[10px] text-emerald-400 font-bold">100% Pass Rate</div>
           </div>
         </div>
 
-        <div className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-purple-500/10 text-purple-500 flex items-center justify-center shrink-0">
+        <div className="p-5 rounded-3xl bg-slate-900/80 border border-slate-800 shadow-sm flex items-center gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-violet-500/10 text-violet-400 flex items-center justify-center shrink-0">
             <Clock className="w-6 h-6" />
           </div>
           <div>
-            <div className="text-xs text-slate-400 font-semibold">Study Velocity</div>
-            <div className="text-2xl font-extrabold text-slate-900 dark:text-white">
-              18.4 hrs
+            <div className="text-xs text-slate-400 font-semibold">Exploration Time</div>
+            <div className="text-2xl font-extrabold text-white">
+              22.7 hrs
             </div>
-            <div className="text-[10px] text-purple-400 font-bold">Past 30 Days</div>
+            <div className="text-[10px] text-violet-400 font-bold">Past 30 Days</div>
           </div>
         </div>
       </div>
 
-      {/* Main Analytics Row: Skill Radar & Strengths */}
+      {/* Skill Radar & Achievements Shelf */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Skill Mastery Distribution */}
-        <div className="p-6 sm:p-8 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-6">
+        {/* Visual Skill Radar */}
+        <div className="p-6 sm:p-8 rounded-3xl bg-slate-900/80 border border-slate-800 shadow-xl space-y-4 flex flex-col justify-between">
           <div>
-            <h3 className="text-lg font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
-              <Brain className="w-5 h-5 text-indigo-500" />
-              <span>Skill Mastery Spectrum</span>
+            <h3 className="text-lg font-extrabold text-white flex items-center gap-2">
+              <Brain className="w-5 h-5 text-cyan-400" />
+              <span>Competency Skill Radar</span>
             </h3>
-            <p className="text-xs text-slate-500 mt-1">
-              Evaluated based on completed lessons, interactive code submissions, and quizzes.
+            <p className="text-xs text-slate-400 mt-1">
+              Multi-axis evaluation across Programming, AI, Systems Architecture, and Design.
             </p>
           </div>
 
-          <div className="space-y-4">
-            {skills.map(skill => (
-              <div key={skill.name} className="space-y-1.5">
-                <div className="flex justify-between text-xs font-bold text-slate-700 dark:text-slate-300">
-                  <span>{skill.name}</span>
-                  <span>{skill.level}%</span>
-                </div>
-                <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-2.5 overflow-hidden">
-                  <div
-                    className={`bg-gradient-to-r ${skill.color} h-full rounded-full transition-all duration-500`}
-                    style={{ width: `${skill.level}%` }}
-                  />
-                </div>
-              </div>
-            ))}
+          <div className="py-4 flex justify-center">
+            <SkillRadarChart data={radarData} size={300} />
           </div>
         </div>
 
-        {/* AI Learning Diagnostics & Recommendations */}
-        <div className="p-6 sm:p-8 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-6">
-          <div>
-            <h3 className="text-lg font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-pink-500" />
-              <span>Lumina Diagnostic Insights</span>
-            </h3>
-            <p className="text-xs text-slate-500 mt-1">
-              Personalized strengths and targeted revision suggestions.
-            </p>
+        {/* Unlocked Achievements Collection */}
+        <div className="p-6 sm:p-8 rounded-3xl bg-slate-900/80 border border-slate-800 shadow-xl space-y-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-extrabold text-white flex items-center gap-2">
+                <Trophy className="w-5 h-5 text-amber-400" />
+                <span>Achievement Collection</span>
+              </h3>
+              <p className="text-xs text-slate-400 mt-1">
+                Trophies earned across your learning universe journey.
+              </p>
+            </div>
+            <span className="text-xs font-bold text-amber-400">
+              {achievements.filter(a => a.unlockedAt).length} / {achievements.length} Unlocked
+            </span>
           </div>
 
           <div className="space-y-3">
-            <div className="p-4 rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/20 border border-emerald-500/30 space-y-1">
-              <div className="flex items-center gap-2 text-xs font-bold text-emerald-600 dark:text-emerald-400">
-                <ShieldCheck className="w-4 h-4" />
-                <span>Superpower: Vector Retrieval & Embeddings</span>
-              </div>
-              <p className="text-xs text-slate-600 dark:text-slate-300">
-                100% quiz accuracy on Cosine Distance and Reciprocal Rank Fusion! You possess clear intuition for high-dimensional search.
-              </p>
-            </div>
+            {achievements.map(ach => {
+              const isUnlocked = Boolean(ach.unlockedAt);
+              return (
+                <div
+                  key={ach.id}
+                  className={`p-4 rounded-2xl border transition-all flex items-center justify-between ${
+                    isUnlocked
+                      ? 'bg-slate-800/80 border-amber-500/30'
+                      : 'bg-slate-900/40 border-slate-800 opacity-60'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div
+                      className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+                        isUnlocked
+                          ? 'bg-amber-500/20 text-amber-400'
+                          : 'bg-slate-800 text-slate-600'
+                      }`}
+                    >
+                      <Trophy className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-extrabold text-white">{ach.title}</h4>
+                      <p className="text-[11px] text-slate-400">{ach.description}</p>
+                    </div>
+                  </div>
 
-            <div className="p-4 rounded-2xl bg-amber-50/70 dark:bg-amber-950/20 border border-amber-500/30 space-y-1">
-              <div className="flex items-center gap-2 text-xs font-bold text-amber-600 dark:text-amber-400">
-                <Sparkles className="w-4 h-4" />
-                <span>Recommended Revision: Design Tokens & WCAG</span>
-              </div>
-              <p className="text-xs text-slate-600 dark:text-slate-300">
-                Revisit Chapter 1 in Design Systems to reinforce 4.5:1 text contrast ratios before moving to advanced UI animation modules.
-              </p>
-            </div>
-
-            <div className="p-4 rounded-2xl bg-indigo-50/70 dark:bg-indigo-950/20 border border-indigo-500/30 space-y-1">
-              <div className="flex items-center gap-2 text-xs font-bold text-indigo-600 dark:text-indigo-400">
-                <TrendingUp className="w-4 h-4" />
-                <span>Habit Insight: Evening Focus Peak</span>
-              </div>
-              <p className="text-xs text-slate-600 dark:text-slate-300">
-                You complete 68% of lessons between 7:00 PM and 10:00 PM. Keep your daily streak timer set around 8:00 PM for maximum retention!
-              </p>
-            </div>
+                  <span className="text-xs font-extrabold text-amber-400 shrink-0">
+                    +{ach.xpReward} XP
+                  </span>
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>

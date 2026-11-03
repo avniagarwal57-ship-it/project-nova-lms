@@ -4,23 +4,25 @@ import { Navbar } from './components/common/Navbar';
 import { Sidebar } from './components/common/Sidebar';
 import { LevelUpModal } from './components/common/LevelUpModal';
 
-// Pages
+// 15 Application Pages of PROJECT NOVA
 import { LandingPage } from './pages/LandingPage';
 import { AuthPage } from './pages/AuthPage';
 import { DashboardPage } from './pages/DashboardPage';
-import { ExplorePage } from './pages/ExplorePage';
+import { WorldsPage } from './pages/WorldsPage';
 import { CourseDetailsPage } from './pages/CourseDetailsPage';
 import { LessonPlayerPage } from './pages/LessonPlayerPage';
-import { QuizPage } from './pages/QuizPage';
-import { FlashcardsPage } from './pages/FlashcardsPage';
+import { SkillTreePage } from './pages/SkillTreePage';
 import { AiTutorPage } from './pages/AiTutorPage';
-import { MyLearningPage } from './pages/MyLearningPage';
+import { DailyChallengesPage } from './pages/DailyChallengesPage';
 import { AchievementsPage } from './pages/AchievementsPage';
+import { SocialHubPage } from './pages/SocialHubPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { InstructorDashboardPage } from './pages/InstructorDashboardPage';
 import { CourseCreatorPage } from './pages/CourseCreatorPage';
 import { AdminDashboardPage } from './pages/AdminDashboardPage';
 import { SettingsPage } from './pages/SettingsPage';
+import { QuizPage } from './pages/QuizPage';
+import { FlashcardsPage } from './pages/FlashcardsPage';
 
 const AppContent: React.FC = () => {
   const { user } = useAuth();
@@ -56,7 +58,7 @@ const AppContent: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-[#0b0f19] text-slate-900 dark:text-slate-100 flex flex-col transition-colors selection:bg-indigo-500 selection:text-white">
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col transition-colors selection:bg-cyan-500 selection:text-black">
       {/* Top Navbar */}
       <Navbar
         onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
@@ -77,6 +79,7 @@ const AppContent: React.FC = () => {
 
         {/* Main Content Area */}
         <main className="flex-1 min-w-0 pb-16">
+          {/* 1. NOVA Welcome Page */}
           {activeTab === 'landing' && (
             <LandingPage
               setActiveTab={setActiveTab}
@@ -84,10 +87,12 @@ const AppContent: React.FC = () => {
             />
           )}
 
+          {/* 2. Authentication */}
           {activeTab === 'auth' && (
             <AuthPage setActiveTab={setActiveTab} />
           )}
 
+          {/* 3. Learner Command Center */}
           {activeTab === 'dashboard' && (
             <DashboardPage
               setActiveTab={setActiveTab}
@@ -96,18 +101,24 @@ const AppContent: React.FC = () => {
             />
           )}
 
-          {activeTab === 'explore' && (
-            <ExplorePage onSelectCourse={handleSelectCourse} />
+          {/* 4. The Learning Worlds */}
+          {(activeTab === 'worlds' || activeTab === 'explore') && (
+            <WorldsPage
+              onSelectCourse={handleSelectCourse}
+              onOpenCreateCourse={() => setActiveTab('course-creator')}
+            />
           )}
 
+          {/* 5. Course and Mission Details */}
           {activeTab === 'course-details' && (
             <CourseDetailsPage
               courseId={selectedCourseId}
-              onBack={() => setActiveTab('explore')}
+              onBack={() => setActiveTab('worlds')}
               onStartLesson={handleStartLesson}
             />
           )}
 
+          {/* 6. Interactive Learning Studio (6-Stage Quest Player) */}
           {activeTab === 'lesson-player' && (
             <LessonPlayerPage
               courseId={selectedCourseId}
@@ -119,6 +130,68 @@ const AppContent: React.FC = () => {
             />
           )}
 
+          {/* 7. Skill Tree */}
+          {activeTab === 'skill-tree' && (
+            <SkillTreePage
+              onStartQuest={handleSelectCourse}
+            />
+          )}
+
+          {/* 8. NOVA AI Mentor */}
+          {(activeTab === 'ai-mentor' || activeTab === 'ai-tutor') && (
+            <AiTutorPage />
+          )}
+
+          {/* 9. Daily Challenges & Quests */}
+          {activeTab === 'daily-challenges' && (
+            <DailyChallengesPage />
+          )}
+
+          {/* 10. Achievement Center & Leaderboard */}
+          {(activeTab === 'achievements' || activeTab === 'leaderboard') && (
+            <AchievementsPage />
+          )}
+
+          {/* 11. Social Learning Hub */}
+          {activeTab === 'social-hub' && (
+            <SocialHubPage />
+          )}
+
+          {/* 12. Personal Learning Profile */}
+          {activeTab === 'profile' && (
+            <ProfilePage />
+          )}
+
+          {/* 13. Instructor Studio */}
+          {activeTab === 'instructor' && (
+            <InstructorDashboardPage
+              onCreateCourse={() => setActiveTab('course-creator')}
+              onSelectCourse={handleSelectCourse}
+            />
+          )}
+
+          {/* Quest & Course Creator */}
+          {activeTab === 'course-creator' && (
+            <CourseCreatorPage
+              onBack={() => setActiveTab('instructor')}
+              onCourseCreated={newId => {
+                setSelectedCourseId(newId);
+                setActiveTab('course-details');
+              }}
+            />
+          )}
+
+          {/* 14. Admin Control Center */}
+          {activeTab === 'admin' && (
+            <AdminDashboardPage />
+          )}
+
+          {/* 15. Settings */}
+          {activeTab === 'settings' && (
+            <SettingsPage />
+          )}
+
+          {/* Sub-modes: Standalone Quiz & Flashcards */}
           {activeTab === 'quiz' && (
             <QuizPage
               quizId={selectedQuizId}
@@ -133,57 +206,6 @@ const AppContent: React.FC = () => {
               onBack={() => setActiveTab('lesson-player')}
               onFinish={() => setActiveTab('lesson-player')}
             />
-          )}
-
-          {activeTab === 'ai-tutor' && (
-            <AiTutorPage />
-          )}
-
-          {activeTab === 'my-learning' && (
-            <MyLearningPage
-              onStartLesson={handleStartLesson}
-              onExploreCourses={() => setActiveTab('explore')}
-            />
-          )}
-
-          {activeTab === 'learning-paths' && (
-            <MyLearningPage
-              onStartLesson={handleStartLesson}
-              onExploreCourses={() => setActiveTab('explore')}
-            />
-          )}
-
-          {(activeTab === 'achievements' || activeTab === 'leaderboard') && (
-            <AchievementsPage />
-          )}
-
-          {activeTab === 'profile' && (
-            <ProfilePage />
-          )}
-
-          {activeTab === 'instructor' && (
-            <InstructorDashboardPage
-              onCreateCourse={() => setActiveTab('course-creator')}
-              onSelectCourse={handleSelectCourse}
-            />
-          )}
-
-          {activeTab === 'course-creator' && (
-            <CourseCreatorPage
-              onBack={() => setActiveTab('instructor')}
-              onCourseCreated={newId => {
-                setSelectedCourseId(newId);
-                setActiveTab('course-details');
-              }}
-            />
-          )}
-
-          {activeTab === 'admin' && (
-            <AdminDashboardPage />
-          )}
-
-          {activeTab === 'settings' && (
-            <SettingsPage />
           )}
         </main>
       </div>

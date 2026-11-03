@@ -14,16 +14,24 @@ import {
   LeaderboardEntry,
   Quiz,
   FlashcardDeck,
-} from '../types';
+  LearningWorld,
+  SkillNode,
+  SkillRadarItem,
+  StudyGroup,
+  SocialPost,
+  Bookmark,
+} from '../types/index.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const DATA_DIR = process.env.VERCEL ? path.join('/tmp', 'questlearn-data') : path.resolve(__dirname, '../../data');
+const DATA_DIR = process.env.VERCEL ? path.join('/tmp', 'nova-data') : path.resolve(__dirname, '../../data');
 const DB_FILE = path.join(DATA_DIR, 'db.json');
 
 export interface DatabaseSchema {
   users: User[];
+  worlds: LearningWorld[];
+  skills: SkillNode[];
   courses: Course[];
   quizzes: Quiz[];
   flashcardDecks: FlashcardDeck[];
@@ -32,10 +40,14 @@ export interface DatabaseSchema {
   dailyChallenges: DailyChallenge[];
   learningPaths: LearningPath[];
   notes: Note[];
+  bookmarks: Bookmark[];
   submissions: Submission[];
   leaderboard: LeaderboardEntry[];
+  studyGroups: StudyGroup[];
+  socialPosts: SocialPost[];
   settings: {
     geminiApiKey?: string;
+    openaiApiKey?: string;
     maintenanceMode: boolean;
     allowRegistration: boolean;
   };
@@ -45,53 +57,401 @@ const DEFAULT_USERS: User[] = [
   {
     id: 'user-learner-1',
     name: 'Alex Rivers',
-    email: 'alex@questlearn.dev',
+    email: 'alex@nova.universe',
     role: 'learner',
     avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=250&q=80',
-    bio: 'Passionate developer transitioning into Autonomous AI Systems and Full-Stack Engineering.',
-    xp: 840,
-    level: 3,
-    streakDays: 6,
+    bio: 'Pioneer Cadet navigating Autonomous AI Systems and Full-Stack Orbital Architectures.',
+    rankTitle: 'Void Navigator III',
+    xp: 1420,
+    level: 4,
+    streakDays: 7,
     streakFreezes: 2,
     lastActiveDate: new Date().toISOString().split('T')[0],
-    dailyGoalMinutes: 20,
-    dailyGoalMinutesCompleted: 15,
+    dailyGoalMinutes: 25,
+    dailyGoalMinutesCompleted: 20,
     themePreference: 'dark',
     soundEnabled: true,
+    activeWorldId: 'world-prog',
+    skillsMastered: ['skill-1', 'skill-2', 'skill-3', 'skill-tech-1', 'skill-des-1'],
   },
   {
     id: 'user-instructor-1',
     name: 'Dr. Sarah Chen',
-    email: 'sarah.chen@questlearn.dev',
+    email: 'sarah.chen@nova.universe',
     role: 'instructor',
     avatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=250&q=80',
-    bio: 'Staff AI Researcher & Former Stanford Lecturer. Creator of top-rated Deep Learning curricula.',
-    xp: 4200,
-    level: 8,
-    streakDays: 24,
+    bio: 'Staff AI Architect & Quantum Computing Scholar. Lead Commander of the AI Systems Guild.',
+    rankTitle: 'Master Architect',
+    xp: 5800,
+    level: 9,
+    streakDays: 28,
     streakFreezes: 5,
-    lastActiveDate: new Date().toISOString().split('T')[0],
-    dailyGoalMinutes: 30,
-    dailyGoalMinutesCompleted: 30,
-    themePreference: 'dark',
-    soundEnabled: true,
-  },
-  {
-    id: 'user-admin-1',
-    name: 'Marcus Vance',
-    email: 'admin@questlearn.dev',
-    role: 'admin',
-    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=250&q=80',
-    bio: 'QuestLearn Platform Administrator & Chief Learning Architect.',
-    xp: 9999,
-    level: 10,
-    streakDays: 45,
-    streakFreezes: 10,
     lastActiveDate: new Date().toISOString().split('T')[0],
     dailyGoalMinutes: 45,
     dailyGoalMinutesCompleted: 45,
     themePreference: 'dark',
     soundEnabled: true,
+    activeWorldId: 'world-tech',
+    skillsMastered: ['skill-1', 'skill-2', 'skill-3', 'skill-4', 'skill-5', 'skill-tech-1', 'skill-tech-2'],
+  },
+  {
+    id: 'user-admin-1',
+    name: 'Marcus Vance',
+    email: 'admin@nova.universe',
+    role: 'admin',
+    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=250&q=80',
+    bio: 'NOVA Universe Overseer & Chief Learning Ecosystem Architect.',
+    rankTitle: 'Universe Commander',
+    xp: 9999,
+    level: 12,
+    streakDays: 60,
+    streakFreezes: 10,
+    lastActiveDate: new Date().toISOString().split('T')[0],
+    dailyGoalMinutes: 60,
+    dailyGoalMinutesCompleted: 60,
+    themePreference: 'dark',
+    soundEnabled: true,
+    activeWorldId: 'world-tech',
+    skillsMastered: ['skill-1', 'skill-2', 'skill-3', 'skill-4', 'skill-5', 'skill-6', 'skill-7'],
+  },
+];
+
+const DEFAULT_WORLDS: LearningWorld[] = [
+  {
+    id: 'world-prog',
+    title: 'Programming World',
+    slug: 'programming-world',
+    description: 'Master core computational foundations, distributed algorithms, TypeScript, Rust, and systems architecture.',
+    longDescription: 'Enter the algorithmic reactor. Here, code is woven into high-performance software systems. Move from elemental syntax to distributed topologies, metaprogramming, and reactive architectures.',
+    color: '#38bdf8',
+    accentColor: '#0284c7',
+    gradient: 'from-cyan-500/20 via-blue-600/20 to-indigo-900/40',
+    icon: 'Terminal',
+    bannerImage: 'https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=1200&q=80',
+    coursesCount: 8,
+    learnersCount: 3840,
+    difficultyTier: 'All Levels',
+    skillsCount: 14,
+    featuredCourseId: 'course-ai-agentic',
+  },
+  {
+    id: 'world-tech',
+    title: 'Technology World',
+    slug: 'technology-world',
+    description: 'Explore the frontiers of Autonomous AI, Cloud Fabrics, Quantum Information, and Cyber Defense.',
+    longDescription: 'The nerve center of futuristic infrastructure. Command LLMs as reasoning engines, deploy resilient Kubernetes fabrics, and explore quantum circuit simulation.',
+    color: '#818cf8',
+    accentColor: '#4f46e5',
+    gradient: 'from-indigo-500/20 via-purple-600/20 to-slate-900/40',
+    icon: 'Cpu',
+    bannerImage: 'https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=1200&q=80',
+    coursesCount: 6,
+    learnersCount: 2950,
+    difficultyTier: 'Intermediate to Expert',
+    skillsCount: 12,
+    featuredCourseId: 'course-cloud-scale',
+  },
+  {
+    id: 'world-design',
+    title: 'Design World',
+    slug: 'design-world',
+    description: 'Craft immersive spatial interfaces, generative UI systems, fluid motion physics, and accessible design tokens.',
+    longDescription: 'Where aesthetics fuse with precision engineering. Construct futuristic dashboards, holographic spatial palettes, and high-performance design component systems.',
+    color: '#f43f5e',
+    accentColor: '#e11d48',
+    gradient: 'from-rose-500/20 via-pink-600/20 to-purple-900/40',
+    icon: 'Palette',
+    bannerImage: 'https://images.unsplash.com/photo-1507238691740-187a5b1d37b8?auto=format&fit=crop&w=1200&q=80',
+    coursesCount: 5,
+    learnersCount: 2180,
+    difficultyTier: 'Beginner to Advanced',
+    skillsCount: 10,
+    featuredCourseId: 'course-design-systems',
+  },
+  {
+    id: 'world-biz',
+    title: 'Business World',
+    slug: 'business-world',
+    description: 'Architect venture scalability, master algorithmic finance, product-market velocity, and exponential growth.',
+    longDescription: 'Turn technical breakthroughs into enduring planetary institutions. Learn venture modeling, unit economics, defensible moats, and product strategy.',
+    color: '#10b981',
+    accentColor: '#059669',
+    gradient: 'from-emerald-500/20 via-teal-600/20 to-slate-900/40',
+    icon: 'Briefcase',
+    bannerImage: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=1200&q=80',
+    coursesCount: 4,
+    learnersCount: 1890,
+    difficultyTier: 'Intermediate',
+    skillsCount: 9,
+    featuredCourseId: 'course-venture-arch',
+  },
+  {
+    id: 'world-sci',
+    title: 'Science World',
+    slug: 'science-world',
+    description: 'Delve into theoretical astrophysics, neuro-computation, synthetic biology, and complex dynamical systems.',
+    longDescription: 'Probe the deepest laws of reality. Model celestial orbital mechanics, neural connectomes, and cellular gene regulatory networks.',
+    color: '#a855f7',
+    accentColor: '#9333ea',
+    gradient: 'from-purple-500/20 via-violet-600/20 to-indigo-950/40',
+    icon: 'Atom',
+    bannerImage: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=1200&q=80',
+    coursesCount: 4,
+    learnersCount: 1640,
+    difficultyTier: 'Advanced to Expert',
+    skillsCount: 8,
+    featuredCourseId: 'course-neuro-cog',
+  },
+  {
+    id: 'world-mind',
+    title: 'Personal Development World',
+    slug: 'personal-development-world',
+    description: 'Supercharge focus latency, enter deep cognitive flow states, master mental models, and lifelong habits.',
+    longDescription: 'Upgrade your organic CPU. Implement circadian optimization, deliberate practice protocols, second-brain synthesis, and stoic mental resilience.',
+    color: '#f59e0b',
+    accentColor: '#d97706',
+    gradient: 'from-amber-500/20 via-orange-600/20 to-slate-900/40',
+    icon: 'Sparkles',
+    bannerImage: 'https://images.unsplash.com/photo-1506126613408-eca07ce68773?auto=format&fit=crop&w=1200&q=80',
+    coursesCount: 5,
+    learnersCount: 2750,
+    difficultyTier: 'All Levels',
+    skillsCount: 8,
+    featuredCourseId: 'course-flow-mastery',
+  },
+  {
+    id: 'world-lang',
+    title: 'Language World',
+    slug: 'language-world',
+    description: 'Master global languages, computational linguistics, neural translation protocols, and high-stakes negotiation.',
+    longDescription: 'Bridge minds across civilizations. Understand polyglot phonology, natural language semantics, cultural rhetoric, and real-time translation pipelines.',
+    color: '#06b6d4',
+    accentColor: '#0891b2',
+    gradient: 'from-cyan-500/20 via-sky-600/20 to-slate-900/40',
+    icon: 'Globe',
+    bannerImage: 'https://images.unsplash.com/photo-1457369804613-52c61a468e7d?auto=format&fit=crop&w=1200&q=80',
+    coursesCount: 3,
+    learnersCount: 1420,
+    difficultyTier: 'Beginner to Intermediate',
+    skillsCount: 7,
+    featuredCourseId: 'course-polyglot-ai',
+  },
+];
+
+const DEFAULT_SKILLS: SkillNode[] = [
+  // Programming Tree Nodes
+  {
+    id: 'skill-1',
+    worldId: 'world-prog',
+    name: 'Computational Fundamentals',
+    category: 'Programming',
+    level: 1,
+    xpRequired: 100,
+    status: 'mastered',
+    prerequisites: [],
+    nextSkills: ['skill-2'],
+    description: 'Binary logic, memory addressing, CPU cycles, and fundamental execution models.',
+    icon: 'Cpu',
+    masteryPercentage: 100,
+    relatedCourseId: 'course-ai-agentic',
+  },
+  {
+    id: 'skill-2',
+    worldId: 'world-prog',
+    name: 'Variables & Memory Types',
+    category: 'Programming',
+    level: 1,
+    xpRequired: 200,
+    status: 'mastered',
+    prerequisites: ['skill-1'],
+    nextSkills: ['skill-3'],
+    description: 'Stack vs heap allocation, primitives, references, and static type checking.',
+    icon: 'Box',
+    masteryPercentage: 100,
+    relatedCourseId: 'course-ai-agentic',
+  },
+  {
+    id: 'skill-3',
+    worldId: 'world-prog',
+    name: 'Logic Loops & Control Flow',
+    category: 'Programming',
+    level: 2,
+    xpRequired: 350,
+    status: 'mastered',
+    prerequisites: ['skill-2'],
+    nextSkills: ['skill-4'],
+    description: 'Conditionals, deterministic iteration, recursion, and branch prediction patterns.',
+    icon: 'Repeat',
+    masteryPercentage: 100,
+    relatedCourseId: 'course-ai-agentic',
+  },
+  {
+    id: 'skill-4',
+    worldId: 'world-prog',
+    name: 'Modular Functions & Scopes',
+    category: 'Programming',
+    level: 2,
+    xpRequired: 500,
+    status: 'in_progress',
+    prerequisites: ['skill-3'],
+    nextSkills: ['skill-5'],
+    description: 'Pure functions, closures, higher-order functions, and functional composition.',
+    icon: 'Code2',
+    masteryPercentage: 65,
+    relatedCourseId: 'course-ai-agentic',
+  },
+  {
+    id: 'skill-5',
+    worldId: 'world-prog',
+    name: 'Data Structures & Trees',
+    category: 'Programming',
+    level: 3,
+    xpRequired: 750,
+    status: 'in_progress',
+    prerequisites: ['skill-4'],
+    nextSkills: ['skill-6'],
+    description: 'Hash tables, binary search trees, graph representations, and memory locality.',
+    icon: 'Network',
+    masteryPercentage: 40,
+    relatedCourseId: 'course-ai-agentic',
+  },
+  {
+    id: 'skill-6',
+    worldId: 'world-prog',
+    name: 'Algorithms & Complexity',
+    category: 'Programming',
+    level: 3,
+    xpRequired: 1100,
+    status: 'available',
+    prerequisites: ['skill-5'],
+    nextSkills: ['skill-7'],
+    description: 'Big-O asymptotic bounds, dynamic programming, divide-and-conquer, and graph traversal.',
+    icon: 'Activity',
+    masteryPercentage: 0,
+    relatedCourseId: 'course-ai-agentic',
+  },
+  {
+    id: 'skill-7',
+    worldId: 'world-prog',
+    name: 'Distributed Systems & Concurrency',
+    category: 'Programming',
+    level: 4,
+    xpRequired: 1600,
+    status: 'locked',
+    prerequisites: ['skill-6'],
+    nextSkills: [],
+    description: 'Raft consensus, actor patterns, event-sourcing, and high-throughput pipelines.',
+    icon: 'Share2',
+    masteryPercentage: 0,
+    relatedCourseId: 'course-cloud-scale',
+  },
+
+  // Tech / AI Tree Nodes
+  {
+    id: 'skill-tech-1',
+    worldId: 'world-tech',
+    name: 'Vector Embeddings & Geometry',
+    category: 'Technology',
+    level: 1,
+    xpRequired: 250,
+    status: 'mastered',
+    prerequisites: ['skill-2'],
+    nextSkills: ['skill-tech-2'],
+    description: 'High-dimensional vector spaces, cosine distance, semantic clustering, and dense projections.',
+    icon: 'Layers',
+    masteryPercentage: 100,
+    relatedCourseId: 'course-ai-agentic',
+  },
+  {
+    id: 'skill-tech-2',
+    worldId: 'world-tech',
+    name: 'Retrieval Augmented Generation (RAG)',
+    category: 'Technology',
+    level: 2,
+    xpRequired: 600,
+    status: 'in_progress',
+    prerequisites: ['skill-tech-1'],
+    nextSkills: ['skill-tech-3'],
+    description: 'Hybrid sparse/dense search, reciprocal rank fusion, chunking windows, and re-ranking models.',
+    icon: 'Database',
+    masteryPercentage: 75,
+    relatedCourseId: 'course-ai-agentic',
+  },
+  {
+    id: 'skill-tech-3',
+    worldId: 'world-tech',
+    name: 'Autonomous Agentic Swarms',
+    category: 'Technology',
+    level: 3,
+    xpRequired: 1200,
+    status: 'available',
+    prerequisites: ['skill-tech-2'],
+    nextSkills: ['skill-tech-4'],
+    description: 'ReAct loops, dynamic tool calling, self-critique loops, and multi-agent coordination.',
+    icon: 'Bot',
+    masteryPercentage: 20,
+    relatedCourseId: 'course-ai-agentic',
+  },
+  {
+    id: 'skill-tech-4',
+    worldId: 'world-tech',
+    name: 'Quantum Quantum Circuits',
+    category: 'Technology',
+    level: 4,
+    xpRequired: 2000,
+    status: 'locked',
+    prerequisites: ['skill-tech-3'],
+    nextSkills: [],
+    description: 'Qubits, quantum superposition, entanglement, and Shor/Grover algorithm simulation.',
+    icon: 'Radio',
+    masteryPercentage: 0,
+  },
+
+  // Design Tree Nodes
+  {
+    id: 'skill-des-1',
+    worldId: 'world-design',
+    name: 'Design Tokens & Visual Systems',
+    category: 'Design',
+    level: 1,
+    xpRequired: 200,
+    status: 'mastered',
+    prerequisites: [],
+    nextSkills: ['skill-des-2'],
+    description: 'Atomic color palettes, typographic scales, spacing rhythm, and accessibility contrast.',
+    icon: 'Sliders',
+    masteryPercentage: 100,
+    relatedCourseId: 'course-design-systems',
+  },
+  {
+    id: 'skill-des-2',
+    worldId: 'world-design',
+    name: 'Spatial UI & Micro-interactions',
+    category: 'Design',
+    level: 2,
+    xpRequired: 550,
+    status: 'in_progress',
+    prerequisites: ['skill-des-1'],
+    nextSkills: ['skill-des-3'],
+    description: 'Spring physics, glassmorphism depth, gesture kinematics, and tactile audio feedback.',
+    icon: 'Sparkles',
+    masteryPercentage: 50,
+    relatedCourseId: 'course-design-systems',
+  },
+  {
+    id: 'skill-des-3',
+    worldId: 'world-design',
+    name: 'Generative UI & Dynamic Layouts',
+    category: 'Design',
+    level: 3,
+    xpRequired: 1000,
+    status: 'locked',
+    prerequisites: ['skill-des-2'],
+    nextSkills: [],
+    description: 'Adaptive components synthesized by LLMs in real-time based on user intent.',
+    icon: 'Layout',
+    masteryPercentage: 0,
+    relatedCourseId: 'course-design-systems',
   },
 ];
 
@@ -99,7 +459,7 @@ const DEFAULT_QUIZZES: Quiz[] = [
   {
     id: 'quiz-ai-1',
     lessonId: 'lesson-ai-3',
-    title: 'Check Your Knowledge: LLM Fundamentals & Embeddings',
+    title: 'Mission Evaluation: LLM Fundamentals & Embeddings',
     passingScore: 70,
     questions: [
       {
@@ -110,11 +470,11 @@ const DEFAULT_QUIZZES: Quiz[] = [
           'To compress video files for faster streaming',
           'To convert text, images, or audio into dense mathematical vectors capturing semantic meaning',
           'To encrypt user passwords using symmetric hashing algorithms',
-          'To store relational tables in SQL format'
+          'To store relational tables in SQL format',
         ],
         correctOptionIndex: 1,
         explanation: 'Embeddings map high-dimensional semantic relationships into vector space, allowing similar concepts to cluster together.',
-        hint: 'Think about how search engines find synonyms without exact word matches.'
+        hint: 'Think about how search engines find synonyms without exact word matches.',
       },
       {
         id: 'q2',
@@ -124,11 +484,11 @@ const DEFAULT_QUIZZES: Quiz[] = [
           'Cosine Similarity',
           'Levenshtein Distance',
           'MD5 Checksum Comparison',
-          'Binary XOR Distance'
+          'Binary XOR Distance',
         ],
         correctOptionIndex: 0,
         explanation: 'Cosine similarity measures the cosine of the angle between two vectors, ranging from -1 to 1, regardless of vector magnitude.',
-        hint: 'It measures the angle between vectors.'
+        hint: 'It measures the angle between vectors.',
       },
       {
         id: 'q3',
@@ -138,33 +498,28 @@ const DEFAULT_QUIZZES: Quiz[] = [
           'Fine-tuning the LLM weights permanently on disk',
           'Fetching relevant domain chunks from a vector database and injecting them into the prompt context',
           'Generating the final synthesized response directly to the user',
-          'Compressing tokens into a zip archive'
+          'Compressing tokens into a zip archive',
         ],
         correctOptionIndex: 1,
         explanation: 'Retrieval queries your knowledge base for relevant chunks and injects them into the context window, grounding the LLM.',
-        hint: 'It fetches context before the LLM generates the answer.'
-      }
-    ]
+        hint: 'It fetches context before the LLM generates the answer.',
+      },
+    ],
   },
   {
     id: 'quiz-ux-1',
     lessonId: 'lesson-ux-3',
-    title: 'Design Systems & Accessibility Checkpoint',
+    title: 'Checkpoint: Design Systems & Kinetic Ergonomics',
     passingScore: 75,
     questions: [
       {
         id: 'qux1',
         quizId: 'quiz-ux-1',
-        questionText: 'According to WCAG 2.1 AA guidelines, what is the minimum contrast ratio required for normal body text against its background?',
-        options: [
-          '3:1',
-          '4.5:1',
-          '7:1',
-          '2.5:1'
-        ],
+        questionText: 'According to WCAG 2.1 AA guidelines, what is the minimum contrast ratio required for standard body text against its background?',
+        options: ['3:1', '4.5:1', '7:1', '2.5:1'],
         correctOptionIndex: 1,
-        explanation: 'WCAG AA requires at least 4.5:1 for standard body text (below 18pt) and 3:1 for large text (18pt+ or 14pt bold).',
-        hint: 'Four and a half to one.'
+        explanation: 'WCAG AA requires at least 4.5:1 for standard body text and 3:1 for large text.',
+        hint: 'Four and a half to one.',
       },
       {
         id: 'qux2',
@@ -174,52 +529,52 @@ const DEFAULT_QUIZZES: Quiz[] = [
           'A cryptocurrency used to buy Figma plugins',
           'An atomic visual design decision stored as reusable data (e.g., color, spacing, typography)',
           'An authentication JWT token stored in browser cookies',
-          'A visual watermark placed on wireframes'
+          'A visual watermark placed on wireframes',
         ],
         correctOptionIndex: 1,
         explanation: 'Design tokens are platform-agnostic variables representing foundational styling choices across web, iOS, and Android.',
-        hint: 'It stores values like colors, font-sizes, and border-radii.'
-      }
-    ]
-  }
+        hint: 'It stores values like colors, font-sizes, and border-radii.',
+      },
+    ],
+  },
 ];
 
 const DEFAULT_FLASHCARDS: FlashcardDeck[] = [
   {
     id: 'deck-ai-1',
     lessonId: 'lesson-ai-4',
-    title: 'Core AI & LLM Terminology',
+    title: 'Core AI & Autonomous Agent Terminology',
     cards: [
       {
         id: 'fc1',
         front: 'What is Hallucination in Large Language Models?',
         back: 'When an AI model generates factually incorrect, nonsensical, or fabricated information with high semantic confidence.',
         tag: 'Reliability',
-        hint: 'It sounds confident but is factually wrong.'
+        hint: 'It sounds confident but is factually wrong.',
       },
       {
         id: 'fc2',
         front: 'What is Zero-Shot Prompting?',
         back: 'Providing a prompt to an AI model without giving any prior examples or demonstration pairs.',
         tag: 'Prompt Engineering',
-        hint: 'No training examples in the prompt.'
+        hint: 'No training examples in the prompt.',
       },
       {
         id: 'fc3',
         front: 'What is the ReAct Pattern in Autonomous Agents?',
         back: 'A prompting framework combining "Reasoning" (Thought) and "Acting" (Tool execution) in an iterative loop to solve multi-step problems.',
         tag: 'Agents',
-        hint: 'Reason + Act loop.'
+        hint: 'Reason + Act loop.',
       },
       {
         id: 'fc4',
         front: 'What is Quantization (e.g., INT8, FP4)?',
         back: 'Reducing the numerical precision of model weights from 16/32-bit floats to smaller bit representations to save VRAM and speed up inference.',
         tag: 'Optimization',
-        hint: 'Low-bit representations.'
-      }
-    ]
-  }
+        hint: 'Low-bit representations.',
+      },
+    ],
+  },
 ];
 
 const DEFAULT_COURSES: Course[] = [
@@ -227,698 +582,723 @@ const DEFAULT_COURSES: Course[] = [
     id: 'course-ai-agentic',
     title: 'Full-Stack AI Engineering: From RAG to Autonomous Agents',
     slug: 'full-stack-ai-engineering',
-    shortDescription: 'Master modern AI architectures: vector search, hybrid retrieval, agent tool-calling, and production deployment.',
-    description: `Dive deep into the new wave of software engineering where LLMs act as reasoning engines. This hands-on course takes you from fundamental embedding mechanics and hybrid vector retrieval to crafting production-grade multi-agent swarms that execute complex tasks autonomously.
-
-Through interactive lessons, live code exercises, quizzes, and project assignments, you will understand how to eliminate hallucinations, architect scalable RAG pipelines, and build resilient AI workflows.`,
-    category: 'AI & Machine Learning',
+    worldId: 'world-tech',
+    worldTitle: 'Technology World',
+    category: 'Technology',
     level: 'Intermediate',
     instructorId: 'user-instructor-1',
     instructorName: 'Dr. Sarah Chen',
     instructorAvatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=250&q=80',
     instructorTitle: 'Staff AI Researcher & Stanford Fellow',
     durationMinutes: 180,
-    rating: 4.9,
-    reviewsCount: 342,
-    enrollmentsCount: 1420,
+    rating: 4.95,
+    reviewsCount: 412,
+    enrollmentsCount: 1680,
     thumbnail: 'https://images.unsplash.com/photo-1677442136019-21780efad99a?auto=format&fit=crop&w=1200&q=80',
     tags: ['Artificial Intelligence', 'LLM', 'Vector DB', 'RAG', 'Agents', 'Python', 'TypeScript'],
     learningOutcomes: [
       'Understand transformer embeddings, chunking strategies, and vector distance metrics',
       'Build resilient RAG pipelines with hybrid keyword and semantic retrieval',
       'Design autonomous agents using the ReAct loop and function/tool calling',
-      'Deploy low-latency AI backends with streaming responses and guardrails'
+      'Deploy low-latency AI backends with streaming responses and guardrails',
     ],
     prerequisites: ['Basic JavaScript or Python knowledge', 'Understanding of REST APIs'],
     published: true,
     featured: true,
+    xpRewardTotal: 650,
+    badgeReward: 'Nebula Agent Architect',
+    shortDescription: 'Master modern AI architectures: vector search, hybrid retrieval, agent tool-calling, and production deployment.',
+    description: `Dive deep into the new wave of software engineering where LLMs act as reasoning engines. This hands-on quest takes you from fundamental embedding mechanics and hybrid vector retrieval to crafting production-grade multi-agent swarms that execute complex tasks autonomously.
+
+Through interactive missions, live code sandboxes, visual architecture diagrams, quizzes, and project assignments, you will understand how to eliminate hallucinations, architect scalable RAG pipelines, and build resilient AI workflows.`,
     chapters: [
       {
         id: 'ch-ai-1',
         courseId: 'course-ai-agentic',
-        title: 'Chapter 1: Foundations of Modern AI Systems',
+        title: 'Mission Sector 1: Vector Geometry & Embeddings',
         order: 1,
         lessons: [
           {
             id: 'lesson-ai-1',
             chapterId: 'ch-ai-1',
-            title: 'Welcome & Anatomy of Modern LLMs',
+            title: 'Mission 1: The Geometry of Meaning — Vector Embeddings',
             order: 1,
-            type: 'video',
-            durationMinutes: 12,
-            xpReward: 25,
-            videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
-            transcript: `Welcome to Full-Stack AI Engineering! In this foundational lesson, we break down how modern autoregressive Transformers work. We explore the attention mechanism, tokenization nuances, context windows, and why treating LLMs as probabilistic token prediction engines is essential for robust engineering. Let's look at how vectors map semantic thoughts into high-dimensional geometries.`,
-            markdownContent: `### Key Takeaways
-- **Transformers** process entire sequences simultaneously using self-attention.
-- **Tokens** are sub-word units (~0.75 words per token in English).
-- **Temperature** controls randomness: lower values (0.0 - 0.3) provide deterministic answers, higher values (0.7+) promote creativity.`,
-            resources: [
-              { id: 'r1', title: 'Transformer Architecture Cheatsheet', type: 'pdf', url: '#', size: '2.4 MB' },
-              { id: 'r2', title: 'Starter Code Repository', type: 'code', url: '#', size: '150 KB' }
-            ]
+            type: 'quest',
+            durationMinutes: 18,
+            xpReward: 90,
+            videoUrl: 'https://www.youtube-nocookie.com/embed/aircAruvnKk',
+            stages: {
+              stage1Concept: `Welcome to the frontier of AI intelligence. In traditional software, databases query exact strings. But human language is nuanced, poetic, and synonymous.
+
+Vector Embeddings transform text, code, audio, and images into high-dimensional numerical coordinates (e.g. 1536 floating-point values in OpenAI text-embedding-3-small). Concepts that share semantic meaning cluster tightly in geometric vector space.`,
+              stage2VisualDiagram: {
+                id: 'diag-vector',
+                title: 'High-Dimensional Vector Projection',
+                description: 'Interactive visualization of semantic distance clustering in 3D coordinate projection.',
+                nodes: [
+                  { id: 'n1', label: 'Query: "Cute Puppy"', sublabel: 'Vector: [0.82, 0.14, 0.91]', color: '#38bdf8', icon: 'Sparkles' },
+                  { id: 'n2', label: 'Match: "Golden Retriever"', sublabel: 'Cosine Sim: 0.94', color: '#10b981', icon: 'CheckCircle' },
+                  { id: 'n3', label: 'Match: "Canine Play"', sublabel: 'Cosine Sim: 0.88', color: '#10b981', icon: 'CheckCircle' },
+                  { id: 'n4', label: 'Distant: "Quantum Mechanics"', sublabel: 'Cosine Sim: 0.12', color: '#f43f5e', icon: 'XCircle' },
+                ],
+                connections: [
+                  { from: 'n1', to: 'n2', label: 'Near match' },
+                  { from: 'n1', to: 'n3', label: 'Semantic cluster' },
+                  { from: 'n1', to: 'n4', label: 'Orthogonal / Distant' },
+                ],
+              },
+              stage3Content: `### Why Vector Geometry Dominates Modern AI
+
+When we say two concepts are "similar," what does that mean mathematically?
+
+1. **Euclidean Distance ($L_2$ Norm)**: Measures the straight-line physical distance between coordinates.
+2. **Dot Product**: Multiplies corresponding vector values and sums them. Favors vectors with larger magnitudes.
+3. **Cosine Similarity**: Normalizes vectors to unit length and measures the angle $\\theta$ between them:
+   $$\\text{Cosine Similarity} = \\frac{\\mathbf{A} \\cdot \\mathbf{B}}{\\|\\mathbf{A}\\| \\|\\mathbf{B}\\|}$$
+
+Because modern embedding models normalize vectors before returning them, Cosine Similarity directly correlates to semantic similarity, with values bounded between \`-1.0\` and \`1.0\`.`,
+              stage4Exercise: {
+                id: 'code-vector-sim',
+                title: 'Implement Cosine Similarity in TypeScript',
+                instructions: 'Complete the computeCosineSimilarity function so that it returns the cosine similarity between two numeric arrays. Ensure you handle zero magnitudes safely.',
+                language: 'typescript',
+                starterCode: `function computeCosineSimilarity(a: number[], b: number[]): number {
+  // Your mission: Calculate dot product and vector magnitudes
+  let dotProduct = 0;
+  let normA = 0;
+  let normB = 0;
+
+  for (let i = 0; i < a.length; i++) {
+    dotProduct += a[i] * b[i];
+    normA += a[i] * a[i];
+    normB += b[i] * b[i];
+  }
+
+  const denominator = Math.sqrt(normA) * Math.sqrt(normB);
+  if (denominator === 0) return 0;
+  
+  return dotProduct / denominator;
+}
+
+// Test vectors
+const v1 = [1, 2, 3];
+const v2 = [1, 2, 3];
+console.log("Similarity:", computeCosineSimilarity(v1, v2));`,
+                solutionCode: `function computeCosineSimilarity(a: number[], b: number[]): number {
+  let dotProduct = 0;
+  let normA = 0;
+  let normB = 0;
+
+  for (let i = 0; i < a.length; i++) {
+    dotProduct += a[i] * b[i];
+    normA += a[i] * a[i];
+    normB += b[i] * b[i];
+  }
+
+  const denominator = Math.sqrt(normA) * Math.sqrt(normB);
+  return denominator === 0 ? 0 : dotProduct / denominator;
+}`,
+                testCases: [
+                  { input: '[1, 0], [1, 0]', expectedOutput: '1.00', description: 'Identical vectors score 1.0' },
+                  { input: '[1, 0], [0, 1]', expectedOutput: '0.00', description: 'Orthogonal vectors score 0.0' },
+                  { input: '[1, 1], [-1, -1]', expectedOutput: '-1.00', description: 'Opposite vectors score -1.0' },
+                ],
+                hints: ['Iterate through both arrays in a loop to compute dotProduct += a[i] * b[i]', 'Use Math.sqrt(normA) * Math.sqrt(normB)'],
+              },
+              stage5QuizId: 'quiz-ai-1',
+            },
+            markdownContent: `### Executive Mission Briefing
+
+In this mission, you unlocked the foundational primitive of Artificial Intelligence: **Vector Geometry**.
+
+#### Core Takeaways:
+- Embeddings translate arbitrary symbolic tokens into geometric coordinates.
+- Cosine similarity measures angular orientation, independent of token length.
+- Vector search is the foundation for semantic memory in autonomous agents.`,
+            quizId: 'quiz-ai-1',
           },
           {
             id: 'lesson-ai-2',
             chapterId: 'ch-ai-1',
-            title: 'Vector Databases, Hybrid Search & RAG Architecture',
+            title: 'Mission 2: Hybrid RAG — Balancing Keywords & Meaning',
             order: 2,
             type: 'text',
-            durationMinutes: 18,
-            xpReward: 30,
-            markdownContent: `# Vector Databases & Hybrid Retrieval
+            durationMinutes: 20,
+            xpReward: 100,
+            markdownContent: `### The Limits of Pure Vector Search
 
-When scaling LLM applications to private company datasets, we face two fundamental constraints:
-1. **Context Window Limits**: Even with 1M+ token windows, dumping an entire knowledge base is slow and expensive.
-2. **Knowledge Recency**: Pre-trained models cannot know your internal data without grounding.
+Vector search is brilliant at understanding conceptual synonyms (e.g. "laptop won't turn on" matches "MacBook black screen"). 
 
-### The Retrieval-Augmented Generation (RAG) Architecture
+However, pure vector search often struggles with:
+- Exact part numbers (\`SKU-9924-X\`)
+- Specific legal statute citations (\`Article 14-B\`)
+- Rare acronyms or unique user identifiers
 
-\`\`\`
-[User Query] ──> [Embedding Model] ──> [Query Vector]
-                                            │
-                                            ▼
-[Document Chunks] ──> [Vector DB] ──> [Top-K Nearest Neighbors]
-                                            │
-                                            ▼
-                    [Prompt Context: Chunks + Query] ──> [LLM Synthesis]
-\`\`\`
+**Hybrid Search** solves this by running BM25 keyword matching and dense vector search in parallel, merging their rank scores using **Reciprocal Rank Fusion (RRF)**:
 
-### Why Hybrid Search Outperforms Pure Vector Search
-Pure dense vector search excels at conceptual matching ("how to reset credentials" matches "password recovery"). However, it struggles with:
-- Exact part numbers or UUIDs (\`TX-90210\`)
-- Specific product codes and acronyms
+$$RRF(d) = \\sum_{m \\in M} \\frac{1}{60 + r_m(d)}$$
 
-**Hybrid Search** combines **BM25 (Sparse Keyword Search)** with **HNSW (Dense Vector Search)** using **Reciprocal Rank Fusion (RRF)**:
-
-\`\`\`typescript
-// Reciprocal Rank Fusion Formula
-function calculateRRF(sparseRank: number, denseRank: number, k = 60): number {
-  return (1 / (k + sparseRank)) + (1 / (k + denseRank));
-}
-\`\`\`
-
-### Summary Checklist
-- [x] Chunk documents with sliding windows (20% overlap).
-- [x] Use normalized embeddings for cosine distance.
-- [x] Filter metadata before ranking.`,
-            resources: [
-              { id: 'r3', title: 'Vector Search Benchmarking Guide', type: 'slides', url: '#' }
-            ]
+This guarantees zero loss of exact technical specificity while preserving semantic discovery!`,
           },
           {
             id: 'lesson-ai-3',
             chapterId: 'ch-ai-1',
-            title: 'Interactive Knowledge Check: LLM & Vector Mastery',
+            title: 'Knowledge Challenge: Vector & RAG Master Checkpoint',
             order: 3,
             type: 'quiz',
-            durationMinutes: 10,
-            xpReward: 40,
-            quizId: 'quiz-ai-1'
+            durationMinutes: 12,
+            xpReward: 80,
+            quizId: 'quiz-ai-1',
           },
           {
             id: 'lesson-ai-4',
             chapterId: 'ch-ai-1',
-            title: 'Flashcard Challenge: Core Terminology Drill',
+            title: 'Mission 4: Autonomous Flashcard Drill',
             order: 4,
             type: 'flashcards',
-            durationMinutes: 8,
-            xpReward: 35,
-            flashcardDeckId: 'deck-ai-1'
-          }
-        ]
+            durationMinutes: 10,
+            xpReward: 60,
+            flashcardDeckId: 'deck-ai-1',
+          },
+        ],
       },
       {
         id: 'ch-ai-2',
         courseId: 'course-ai-agentic',
-        title: 'Chapter 2: Building Autonomous Multi-Agent Workflows',
+        title: 'Mission Sector 2: Building Autonomous Multi-Agent Swarms',
         order: 2,
         lessons: [
           {
             id: 'lesson-ai-5',
             chapterId: 'ch-ai-2',
-            title: 'The ReAct Loop & Schema-Enforced Tool Calling',
+            title: 'Mission 5: The ReAct Loop — Reasoning Meets Execution',
             order: 1,
             type: 'text',
             durationMinutes: 22,
-            xpReward: 30,
-            markdownContent: `# Autonomous Agents: The ReAct Pattern
+            xpReward: 110,
+            markdownContent: `### The ReAct Pattern in Autonomous Agents
 
-An autonomous agent differs from a simple chatbot by possessing **agency**: the ability to reason, choose external tools, inspect results, and self-correct until a goal is satisfied.
+Single-turn prompt-response systems are passive. To create agents that execute real-world missions, we use the **ReAct (Reason + Act)** pattern.
 
-### The ReAct Cycle
-
-1. **Thought**: The model plans its next action based on the current state.
-2. **Action**: The model outputs a structured tool invocation (e.g., \`search_database({ query: "..." })\`).
-3. **Observation**: The runtime executes the tool and injects the raw result back into the prompt.
-4. **Repeat**: The loop continues until the agent produces a final answer.
-
-\`\`\`typescript
-interface ToolDefinition {
-  name: string;
-  description: string;
-  parameters: Record<string, unknown>;
-  execute: (args: any) => Promise<any>;
-}
-\`\`\`
-
-In production, agents should always implement max-step limits and strict schemas to prevent infinite loops.`
+In each cycle, the agent performs:
+1. **Thought:** Analyzes current state and plans the next step.
+2. **Action:** Selects an executable tool (e.g. \`search_web\`, \`run_sql\`, \`call_api\`) with typed parameters.
+3. **Observation:** Receives tool execution results and updates working memory.
+4. **Conclusion:** Once the termination criteria are satisfied, formulates the final answer.`,
           },
-          {
-            id: 'lesson-ai-6',
-            chapterId: 'ch-ai-2',
-            title: 'Hands-on Assignment: Build an Automated Research Agent',
-            order: 2,
-            type: 'assignment',
-            durationMinutes: 45,
-            xpReward: 100,
-            assignmentId: 'assign-ai-1',
-            markdownContent: `### Practical Assignment: Build an Agent Loop
-Implement a tool-calling dispatcher in TypeScript or Python that handles search, calculator, and memory recall. Submit your solution code and a short architectural explanation below.`
-          }
-        ]
-      }
-    ]
+        ],
+      },
+    ],
   },
   {
-    id: 'course-design-systems',
-    title: 'Modern UI/UX Design Systems with Tailwind & Figma',
-    slug: 'modern-ui-ux-design-systems',
-    shortDescription: 'Build scalable, accessible, and delightful design systems used by modern high-growth tech companies.',
-    description: `Great software feels inevitable. In this course, you will learn the craft of modern interface design, typography hierarchy, tokenization, color psychology, and micro-interactions. You'll bridge the gap between Figma mockups and pixel-perfect Tailwind CSS code.`,
-    category: 'UI/UX Design',
-    level: 'Beginner',
-    instructorId: 'user-instructor-1',
-    instructorName: 'Elena Rostova',
-    instructorAvatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=250&q=80',
-    instructorTitle: 'Principal Design Technologist',
-    durationMinutes: 140,
-    rating: 4.95,
-    reviewsCount: 219,
-    enrollmentsCount: 980,
-    thumbnail: 'https://images.unsplash.com/photo-1507238691740-187a5b1d37b8?auto=format&fit=crop&w=1200&q=80',
-    tags: ['UI/UX', 'Design Systems', 'Tailwind CSS', 'Figma', 'Accessibility', 'Micro-interactions'],
+    id: 'course-cloud-scale',
+    title: 'Distributed Cloud Fabrics & Kubernetes Orchestration',
+    slug: 'distributed-cloud-fabrics',
+    worldId: 'world-tech',
+    worldTitle: 'Technology World',
+    category: 'Technology',
+    level: 'Advanced',
+    instructorId: 'user-admin-1',
+    instructorName: 'Marcus Vance',
+    instructorAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=250&q=80',
+    instructorTitle: 'Universe Commander & Infrastructure Lead',
+    durationMinutes: 210,
+    rating: 4.88,
+    reviewsCount: 289,
+    enrollmentsCount: 1120,
+    thumbnail: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=1200&q=80',
+    tags: ['Kubernetes', 'Cloud', 'DevOps', 'Distributed Systems', 'Go', 'Docker'],
     learningOutcomes: [
-      'Define semantic design tokens for color, typography, elevation, and motion',
-      'Ensure WCAG 2.1 AA accessibility compliance across all components',
-      'Create buttery micro-interactions with CSS transitions and Web Animations API',
-      'Organize modular React component libraries with clear variants and states'
+      'Architect multi-region zero-downtime microservice meshes',
+      'Implement custom Kubernetes Operators with Go and client-go',
+      'Deploy automatic horizontal pod autoscaling based on custom Prometheus metrics',
     ],
-    prerequisites: ['Basic HTML & CSS familiarity'],
+    prerequisites: ['Docker foundations', 'Basic networking'],
     published: true,
     featured: true,
+    xpRewardTotal: 700,
+    badgeReward: 'Orbital Fabric Engineer',
+    shortDescription: 'Master modern cloud orchestration, service meshes, eBPF telemetry, and resilient distributed clusters.',
+    description: 'Learn how hyperscale tech companies run fault-tolerant global software fleets. Construct declarative Kubernetes manifests, orchestrate ingress controllers, configure mutual TLS, and automate self-healing deployments.',
     chapters: [
       {
-        id: 'ch-ux-1',
-        courseId: 'course-design-systems',
-        title: 'Chapter 1: Design Tokens & Visual Hierarchy',
+        id: 'ch-cloud-1',
+        courseId: 'course-cloud-scale',
+        title: 'Sector 1: Control Plane Mechanics & Ingress',
         order: 1,
         lessons: [
           {
-            id: 'lesson-ux-1',
-            chapterId: 'ch-ux-1',
-            title: 'The Art of Spatial Consistency & 8pt Grids',
+            id: 'lesson-cloud-1',
+            chapterId: 'ch-cloud-1',
+            title: 'Mission 1: The Kubernetes Reconciliation Loop',
             order: 1,
-            type: 'video',
-            durationMinutes: 15,
-            xpReward: 25,
-            videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4',
-            transcript: `Spacing is the rhythm of visual design. When spacing is arbitrary, interfaces feel amateur. By adhering to an 8-point base grid (4, 8, 12, 16, 24, 32, 48, 64px), every layout snaps into harmony effortlessly.`
-          },
-          {
-            id: 'lesson-ux-2',
-            chapterId: 'ch-ux-1',
-            title: 'Contrast, Accessible Dark Modes & Micro-Gradients',
-            order: 2,
             type: 'text',
-            durationMinutes: 18,
-            xpReward: 30,
-            markdownContent: `# Designing Premium Dark Modes
+            durationMinutes: 25,
+            xpReward: 95,
+            markdownContent: `### The Declarative Magic of Kubernetes
 
-A true dark mode is never pure \`#000000\` on pure white text. 
-- High contrast black-and-white causes eye strain and halation.
-- Instead, use rich dark slates (\`#0b0f19\`, \`#131b2e\`).
-- Use elevation layers where elevated cards are slightly lighter (\`#1e293b\`) rather than darker.`
+Kubernetes is built around a single, beautiful paradigm: **The Control Loop**.
+
+\`\`\`
+Current State  ───►  Observe  ───►  Analyze Diff  ───►  Actuate  ───►  Desired State
+\`\`\`
+
+You declare what your cluster *should* look like (3 replicas of Service X), and the controller continually works to make reality match your specification.`,
           },
-          {
-            id: 'lesson-ux-3',
-            chapterId: 'ch-ux-1',
-            title: 'Quiz: Accessibility & Tokenization Heuristics',
-            order: 3,
-            type: 'quiz',
-            durationMinutes: 10,
-            xpReward: 40,
-            quizId: 'quiz-ux-1'
-          }
-        ]
-      }
-    ]
+        ],
+      },
+    ],
   },
   {
-    id: 'course-fullstack-cloud',
-    title: 'Cloud-Native Full-Stack Architecture with Node & React',
-    slug: 'cloud-native-fullstack-architecture',
-    shortDescription: 'Architect robust distributed web applications with high concurrency, caching, and rock-solid state management.',
-    description: `Go beyond basic CRUD apps. Learn how modern tech leaders structure resilient full-stack systems with event sourcing, Redis caching, database indexing, and automated deployment pipelines.`,
-    category: 'Full-Stack Web Dev',
-    level: 'Advanced',
+    id: 'course-design-systems',
+    title: 'Futuristic Design Systems & Kinetic Micro-Interactions',
+    slug: 'futuristic-design-systems',
+    worldId: 'world-design',
+    worldTitle: 'Design World',
+    category: 'Design',
+    level: 'Beginner',
     instructorId: 'user-instructor-1',
     instructorName: 'Dr. Sarah Chen',
     instructorAvatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=250&q=80',
     instructorTitle: 'Staff AI Researcher & Stanford Fellow',
-    durationMinutes: 210,
-    rating: 4.88,
-    reviewsCount: 184,
-    enrollmentsCount: 860,
-    thumbnail: 'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?auto=format&fit=crop&w=1200&q=80',
-    tags: ['React', 'Node.js', 'Distributed Systems', 'PostgreSQL', 'Docker', 'Redis'],
+    durationMinutes: 140,
+    rating: 4.92,
+    reviewsCount: 310,
+    enrollmentsCount: 1350,
+    thumbnail: 'https://images.unsplash.com/photo-1507238691740-187a5b1d37b8?auto=format&fit=crop&w=1200&q=80',
+    tags: ['UI/UX', 'Figma', 'CSS', 'Tailwind', 'Design Systems', 'Animation'],
     learningOutcomes: [
-      'Design idempotent REST and WebSocket APIs',
-      'Optimize database queries with B-tree indexes and query plan analysis',
-      'Implement distributed caching and session management with Redis',
-      'Set up zero-downtime CI/CD container deployments'
+      'Build scalable multi-brand design tokens using modern CSS variables',
+      'Implement physics-based spring animations for natural user feedback',
+      'Design accessible dark-first cyberpunk and glassmorphism interfaces',
     ],
-    prerequisites: ['Proficiency in TypeScript or JavaScript', 'Basic SQL familiarity'],
+    prerequisites: ['Basic HTML/CSS'],
     published: true,
-    featured: false,
+    featured: true,
+    xpRewardTotal: 550,
+    badgeReward: 'Spatial Aesthetic Master',
+    shortDescription: 'Construct glowing dark-mode interfaces, spring animations, glassmorphism, and accessible token architectures.',
+    description: 'Transform boring corporate software into an otherworldly aesthetic experience. Master typography hierarchy, contrast ratios, glowing neon accents, and spring physics.',
     chapters: [
       {
-        id: 'ch-fs-1',
-        courseId: 'course-fullstack-cloud',
-        title: 'Chapter 1: Scalable Server Architectures',
+        id: 'ch-des-1',
+        courseId: 'course-design-systems',
+        title: 'Sector 1: Foundations of Futuristic Ergonomics',
         order: 1,
         lessons: [
           {
-            id: 'lesson-fs-1',
-            chapterId: 'ch-fs-1',
-            title: 'Asynchronous Event Loops & Concurrency Patterns',
+            id: 'lesson-ux-1',
+            chapterId: 'ch-des-1',
+            title: 'Mission 1: The Dark-First Philosophy & Light Emission',
             order: 1,
-            type: 'video',
-            durationMinutes: 18,
-            xpReward: 30,
-            videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
-            transcript: `Node.js single-threaded event loop processes thousands of concurrent non-blocking I/O calls through libuv worker pools. Let's analyze how to prevent event-loop lag and manage memory leaks.`
-          }
-        ]
-      }
-    ]
+            type: 'text',
+            durationMinutes: 15,
+            xpReward: 80,
+            markdownContent: `### Designing for the Void
+
+In futuristic interfaces, dark backgrounds are not just an inverted color scheme. They represent deep cosmic canvas space, allowing selective points of electric blue, violet, and amber to guide the learner's attention like stars in an astronomical chart.`,
+          },
+          {
+            id: 'lesson-ux-3',
+            chapterId: 'ch-des-1',
+            title: 'Mission 2: Design Token Verification Challenge',
+            order: 2,
+            type: 'quiz',
+            durationMinutes: 10,
+            xpReward: 70,
+            quizId: 'quiz-ux-1',
+          },
+        ],
+      },
+    ],
   },
   {
-    id: 'course-cyber-security',
-    title: 'Cybersecurity & Threat Defense for Modern Applications',
-    slug: 'cybersecurity-threat-defense',
-    shortDescription: 'Defend web apps against OWASP Top 10 vulnerabilities, zero-day attacks, and supply-chain compromises.',
-    description: `Security is not an afterthought. Learn ethical hacking fundamentals, JWT security pitfalls, SQL injection prevention, CORS hardening, and modern zero-trust enterprise architectures.`,
-    category: 'Cybersecurity',
+    id: 'course-venture-arch',
+    title: 'Venture Architecture: Bootstrapping to Global Scale',
+    slug: 'venture-architecture',
+    worldId: 'world-biz',
+    worldTitle: 'Business World',
+    category: 'Business',
     level: 'Intermediate',
-    instructorId: 'user-instructor-1',
+    instructorId: 'user-admin-1',
     instructorName: 'Marcus Vance',
     instructorAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=250&q=80',
-    instructorTitle: 'Platform Security Director',
+    instructorTitle: 'Universe Commander',
     durationMinutes: 160,
-    rating: 4.92,
-    reviewsCount: 140,
-    enrollmentsCount: 650,
-    thumbnail: 'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?auto=format&fit=crop&w=1200&q=80',
-    tags: ['Cybersecurity', 'Ethical Hacking', 'OWASP', 'Encryption', 'DevSecOps'],
+    rating: 4.85,
+    reviewsCount: 195,
+    enrollmentsCount: 890,
+    thumbnail: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=1200&q=80',
+    tags: ['Venture Capital', 'Startups', 'Strategy', 'Unit Economics', 'Growth'],
     learningOutcomes: [
-      'Mitigate OWASP Top 10 vulnerabilities in modern web applications',
-      'Implement secure authentication with MFA and cryptographic signatures',
-      'Audit dependencies and container images for known CVEs',
-      'Configure Content Security Policies (CSP) and CORS headers properly'
+      'Model SaaS unit economics (CAC, LTV, Net Retention Rate)',
+      'Construct investor-grade financial models and data rooms',
+      'Design viral product-led growth loops that self-compound',
     ],
-    prerequisites: ['Basic web development understanding'],
+    prerequisites: ['Basic business interest'],
     published: true,
     featured: false,
-    chapters: [
-      {
-        id: 'ch-sec-1',
-        courseId: 'course-cyber-security',
-        title: 'Chapter 1: The Modern Threat Landscape',
-        order: 1,
-        lessons: [
-          {
-            id: 'lesson-sec-1',
-            chapterId: 'ch-sec-1',
-            title: 'Deconstructing Authentication Flaws & Session Hijacking',
-            order: 1,
-            type: 'video',
-            durationMinutes: 16,
-            xpReward: 25,
-            videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4',
-            transcript: `Tokens in LocalStorage are vulnerable to Cross-Site Scripting (XSS). Learn why HttpOnly SameSite cookies provide superior defense and how to implement token rotation.`
-          }
-        ]
-      }
-    ]
-  }
+    xpRewardTotal: 600,
+    badgeReward: 'Titan Venture Architect',
+    shortDescription: 'Master financial modeling, defensible moats, product-led growth loops, and venture fundraising.',
+    description: 'Learn how visionary founders turn code into self-sustaining technological empires. Master unit economics, pitch strategy, capitalization tables, and governance.',
+    chapters: [],
+  },
+  {
+    id: 'course-neuro-cog',
+    title: 'Neuro-Computation & Deep Flow State Engineering',
+    slug: 'neuro-computation-flow',
+    worldId: 'world-sci',
+    worldTitle: 'Science World',
+    category: 'Science',
+    level: 'Advanced',
+    instructorId: 'user-instructor-1',
+    instructorName: 'Dr. Sarah Chen',
+    instructorAvatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=250&q=80',
+    instructorTitle: 'Staff AI Researcher',
+    durationMinutes: 150,
+    rating: 4.96,
+    reviewsCount: 220,
+    enrollmentsCount: 940,
+    thumbnail: 'https://images.unsplash.com/photo-1506126613408-eca07ce68773?auto=format&fit=crop&w=1200&q=80',
+    tags: ['Neuroscience', 'Cognition', 'Flow State', 'Mental Models', 'Focus'],
+    learningOutcomes: [
+      'Harness dopamine circuits for sustainable intrinsic motivation',
+      'Engineer 90-minute ultradian flow sessions with zero context switching',
+      'Implement spaced repetition algorithms based on Ebbinghaus forgetting curves',
+    ],
+    prerequisites: ['Curiosity about biology and cognition'],
+    published: true,
+    featured: false,
+    xpRewardTotal: 580,
+    badgeReward: 'Synaptic Navigator',
+    shortDescription: 'Upgrade human cognition with dopamine neurochemistry, ultradian flow states, and mental stamina.',
+    description: 'Unlock maximum mental focus through science. Explore the neural mechanisms of attention, memory encoding, and cognitive endurance.',
+    chapters: [],
+  },
+  {
+    id: 'course-polyglot-ai',
+    title: 'Neural Linguistics & Multilingual AI Translation',
+    slug: 'neural-linguistics-multilingual',
+    worldId: 'world-lang',
+    worldTitle: 'Language World',
+    category: 'Language',
+    level: 'Beginner',
+    instructorId: 'user-instructor-1',
+    instructorName: 'Dr. Sarah Chen',
+    instructorAvatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=250&q=80',
+    instructorTitle: 'Staff AI Researcher',
+    durationMinutes: 120,
+    rating: 4.89,
+    reviewsCount: 160,
+    enrollmentsCount: 780,
+    thumbnail: 'https://images.unsplash.com/photo-1457369804613-52c61a468e7d?auto=format&fit=crop&w=1200&q=80',
+    tags: ['Linguistics', 'Polyglot', 'Translation', 'Natural Language', 'Semantics'],
+    learningOutcomes: [
+      'Understand comparative grammar structures across major language families',
+      'Build real-time audio neural speech-to-speech translation pipelines',
+      'Develop intuitive rapid vocabulary retention through etymological roots',
+    ],
+    prerequisites: ['Basic linguistic interest'],
+    published: true,
+    featured: false,
+    xpRewardTotal: 500,
+    badgeReward: 'Polyglot Vanguard',
+    shortDescription: 'Master universal grammar, rapid language acquisition protocols, and real-time neural translation.',
+    description: 'Explore the fascinating bridge between human polyglot fluency and modern computational linguistics.',
+    chapters: [],
+  },
+];
+
+const DEFAULT_ENROLLMENTS: Enrollment[] = [
+  {
+    id: 'enr-1',
+    userId: 'user-learner-1',
+    courseId: 'course-ai-agentic',
+    enrolledAt: new Date(Date.now() - 6 * 24 * 3600 * 1000).toISOString(),
+    progressPercentage: 50,
+    completedLessonIds: ['lesson-ai-1', 'lesson-ai-2'],
+    lastLessonId: 'lesson-ai-1',
+    lastAccessedAt: new Date().toISOString(),
+  },
+  {
+    id: 'enr-2',
+    userId: 'user-learner-1',
+    courseId: 'course-design-systems',
+    enrolledAt: new Date(Date.now() - 3 * 24 * 3600 * 1000).toISOString(),
+    progressPercentage: 25,
+    completedLessonIds: ['lesson-ux-1'],
+    lastLessonId: 'lesson-ux-1',
+    lastAccessedAt: new Date(Date.now() - 1 * 24 * 3600 * 1000).toISOString(),
+  },
 ];
 
 const DEFAULT_ACHIEVEMENTS: Achievement[] = [
   {
     id: 'ach-first-step',
-    title: 'First Step',
-    description: 'Complete your first lesson on QuestLearn.',
+    title: 'First Steps in the Cosmos',
+    description: 'Complete your first learning mission in any world.',
     icon: 'Sparkles',
-    xpReward: 50,
-    category: 'courses',
-    unlockedAt: '2026-10-28T10:00:00Z',
-    progress: 1,
-    maxProgress: 1
-  },
-  {
-    id: 'ach-streak-fire',
-    title: 'Flame Igniter',
-    description: 'Maintain a 5-day learning streak.',
-    icon: 'Flame',
     xpReward: 100,
-    category: 'streak',
-    unlockedAt: '2026-11-02T14:30:00Z',
-    progress: 6,
-    maxProgress: 5
-  },
-  {
-    id: 'ach-quiz-master',
-    title: 'Quiz Prodigy',
-    description: 'Score 100% on any interactive assessment.',
-    icon: 'Award',
-    xpReward: 75,
-    category: 'quizzes',
-    unlockedAt: '2026-10-31T09:15:00Z',
-    progress: 1,
-    maxProgress: 1
-  },
-  {
-    id: 'ach-night-owl',
-    title: 'Night Owl',
-    description: 'Complete a study session after 9:00 PM.',
-    icon: 'Moon',
-    xpReward: 50,
     category: 'special',
-    unlockedAt: '2026-11-01T21:40:00Z',
+    unlockedAt: new Date(Date.now() - 5 * 24 * 3600 * 1000).toISOString(),
     progress: 1,
-    maxProgress: 1
+    maxProgress: 1,
   },
   {
-    id: 'ach-flashcard-champ',
-    title: 'Memory Vault',
-    description: 'Review 20 flashcards with high recall rating.',
-    icon: 'Layers',
-    xpReward: 80,
-    category: 'special',
-    progress: 12,
-    maxProgress: 20
-  },
-  {
-    id: 'ach-xp-1000',
-    title: 'Kilowatt Learner',
-    description: 'Accumulate over 1,000 total XP.',
-    icon: 'Zap',
-    xpReward: 150,
-    category: 'xp',
-    progress: 840,
-    maxProgress: 1000
-  },
-  {
-    id: 'ach-streak-14',
-    title: 'Unstoppable Habit',
-    description: 'Reach a 14-day learning streak.',
-    icon: 'ShieldCheck',
-    xpReward: 250,
-    category: 'streak',
-    progress: 6,
-    maxProgress: 14
-  },
-  {
-    id: 'ach-polyglot',
-    title: 'Renaissance Mind',
-    description: 'Enroll in courses across 3 distinct learning domains.',
+    id: 'ach-knowledge-seeker',
+    title: 'Knowledge Seeker',
+    description: 'Complete five full learning missions across the universe.',
     icon: 'Compass',
-    xpReward: 120,
+    xpReward: 250,
     category: 'courses',
-    progress: 2,
-    maxProgress: 3
-  }
+    unlockedAt: undefined,
+    progress: 3,
+    maxProgress: 5,
+  },
+  {
+    id: 'ach-consistency-master',
+    title: 'Consistency Master',
+    description: 'Maintain an unbroken learning streak for 7 consecutive days.',
+    icon: 'Flame',
+    xpReward: 350,
+    category: 'streak',
+    unlockedAt: new Date().toISOString(),
+    progress: 7,
+    maxProgress: 7,
+  },
+  {
+    id: 'ach-problem-solver',
+    title: 'Problem Solver',
+    description: 'Conquer 10 interactive coding sandboxes and practice challenges.',
+    icon: 'Cpu',
+    xpReward: 400,
+    category: 'quizzes',
+    unlockedAt: undefined,
+    progress: 6,
+    maxProgress: 10,
+  },
+  {
+    id: 'ach-skill-explorer',
+    title: 'Skill Tree Explorer',
+    description: 'Master at least three connected nodes in the interactive skill tree.',
+    icon: 'Network',
+    xpReward: 500,
+    category: 'skills',
+    unlockedAt: new Date(Date.now() - 2 * 24 * 3600 * 1000).toISOString(),
+    progress: 3,
+    maxProgress: 3,
+  },
+  {
+    id: 'ach-nebula-pioneer',
+    title: 'Nebula Pioneer',
+    description: 'Earn over 1,000 XP in total exploration rewards.',
+    icon: 'Trophy',
+    xpReward: 600,
+    category: 'xp',
+    unlockedAt: new Date().toISOString(),
+    progress: 1420,
+    maxProgress: 1000,
+  },
 ];
 
-const DEFAULT_CHALLENGES: DailyChallenge[] = [
+const DEFAULT_DAILY_CHALLENGES: DailyChallenge[] = [
   {
-    id: 'ch-1',
-    title: 'Knowledge Builder',
-    description: 'Complete 2 lessons today',
-    xpReward: 40,
-    goal: 2,
-    current: 1,
-    completed: false,
-    claimed: false,
-    icon: 'BookOpen',
-    type: 'lessons'
-  },
-  {
-    id: 'ch-2',
-    title: 'Assessment Ace',
-    description: 'Score 80%+ on any quiz',
-    xpReward: 50,
+    id: 'dc-1',
+    title: 'Orbital Focus',
+    description: 'Complete at least 1 learning mission today.',
+    xpReward: 60,
     goal: 1,
     current: 1,
     completed: true,
     claimed: false,
-    icon: 'Award',
-    type: 'quiz'
+    icon: 'CheckCircle2',
+    type: 'lessons',
   },
   {
-    id: 'ch-3',
-    title: 'Deep Focus',
-    description: 'Study for 20 minutes',
-    xpReward: 30,
+    id: 'dc-2',
+    title: 'Vector Calibration',
+    description: 'Score 80%+ on an interactive Knowledge Challenge.',
+    xpReward: 80,
+    goal: 1,
+    current: 1,
+    completed: true,
+    claimed: false,
+    icon: 'Zap',
+    type: 'quiz',
+  },
+  {
+    id: 'dc-3',
+    title: 'Temporal Velocity',
+    description: 'Spend 20 focused minutes inside the Learning Studio.',
+    xpReward: 70,
     goal: 20,
-    current: 15,
-    completed: false,
+    current: 20,
+    completed: true,
     claimed: false,
     icon: 'Clock',
-    type: 'minutes'
-  }
+    type: 'minutes',
+  },
+  {
+    id: 'dc-4',
+    title: 'Skill Node Awakening',
+    description: 'Advance a skill node in the Programming or Tech skill tree.',
+    xpReward: 100,
+    goal: 1,
+    current: 0,
+    completed: false,
+    claimed: false,
+    icon: 'Network',
+    type: 'skill',
+  },
 ];
 
-const DEFAULT_LEARNING_PATHS: LearningPath[] = [
+const DEFAULT_STUDY_GROUPS: StudyGroup[] = [
   {
-    id: 'path-ai-architect',
-    title: 'Next-Gen Autonomous AI Architect',
-    description: 'From modern LLM mechanics and vector search to production multi-agent systems and safety guardrails.',
-    category: 'Artificial Intelligence',
-    targetRole: 'Senior AI Engineer / AI Systems Architect',
-    coursesCount: 3,
-    durationHours: 18,
-    badgeIcon: 'Brain',
-    courseIds: ['course-ai-agentic', 'course-fullstack-cloud'],
-    skillsGained: ['Vector Retrieval (RAG)', 'Tool Calling Agents', 'Evaluation & Guardrails', 'Scalable Inference']
+    id: 'group-ai-swarms',
+    name: 'AI Swarm Architects',
+    tagline: 'Engineering production multi-agent systems and reasoning loops.',
+    description: 'A global guild of autonomous agent engineers collaborating on open-source vector pipelines, tool schemas, and self-evaluating agents.',
+    worldId: 'world-tech',
+    memberCount: 842,
+    banner: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=800&q=80',
+    activeMission: 'Collaborative Vector Distance Benchmark',
+    joined: true,
   },
   {
-    id: 'path-design-engineer',
-    title: 'Design Systems & Product Engineering',
-    description: 'Unify visual craft with front-end rigor. Master tokenization, accessibility, and micro-interactions.',
-    category: 'UI/UX & Frontend',
-    targetRole: 'Design Engineer / Staff UI Architect',
-    coursesCount: 2,
-    durationHours: 12,
-    badgeIcon: 'Palette',
-    courseIds: ['course-design-systems', 'course-fullstack-cloud'],
-    skillsGained: ['WCAG AA Standards', 'Design Tokens', 'Tailwind CSS', 'Component Architecture']
+    id: 'group-fullstack-orbital',
+    name: 'Orbital Full-Stack Guild',
+    tagline: 'TypeScript metaprogramming, Rust systems, and low-latency servers.',
+    description: 'Deep-dive code reviews, architecture RFCs, and high-performance frontend state machines.',
+    worldId: 'world-prog',
+    memberCount: 1250,
+    banner: 'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?auto=format&fit=crop&w=800&q=80',
+    activeMission: 'Zero-Copy Serialization in TypeScript',
+    joined: false,
   },
   {
-    id: 'path-security-ops',
-    title: 'DevSecOps & Resilient Cloud Defense',
-    description: 'Protect applications, cloud infrastructure, and sensitive customer data against modern cyber threats.',
-    category: 'Cybersecurity',
-    targetRole: 'Application Security Engineer',
-    coursesCount: 2,
-    durationHours: 14,
-    badgeIcon: 'Shield',
-    courseIds: ['course-cyber-security', 'course-fullstack-cloud'],
-    skillsGained: ['OWASP Mitigation', 'Zero Trust Architecture', 'Secrets Management', 'Vulnerability Auditing']
-  }
+    id: 'group-quantum-nebula',
+    name: 'Quantum & Physics Collective',
+    tagline: 'Simulating quantum logic gates and computational neuroscience.',
+    description: 'Bridging quantum mechanics, linear algebra, and synthetic biology into actionable algorithms.',
+    worldId: 'world-sci',
+    memberCount: 460,
+    banner: 'https://images.unsplash.com/photo-1507499739999-097706ad8914?auto=format&fit=crop&w=800&q=80',
+    activeMission: 'Bloch Sphere State Simulation',
+    joined: false,
+  },
 ];
 
-const DEFAULT_ENROLLMENTS: Enrollment[] = [
+const DEFAULT_SOCIAL_POSTS: SocialPost[] = [
   {
-    id: 'enroll-alex-ai',
-    userId: 'user-learner-1',
-    courseId: 'course-ai-agentic',
-    enrolledAt: '2026-10-25T11:00:00Z',
-    progressPercentage: 45,
-    completedLessonIds: ['lesson-ai-1', 'lesson-ai-2'],
-    lastLessonId: 'lesson-ai-3',
-    lastAccessedAt: new Date().toISOString(),
-    certificateIssued: false
+    id: 'post-1',
+    userId: 'user-instructor-1',
+    userName: 'Dr. Sarah Chen',
+    userAvatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=250&q=80',
+    userRank: 'Master Architect',
+    content: 'Just deployed the new 6-stage interactive quest for Vector Embeddings! Check out Stage 4 for the live TypeScript Cosine Similarity sandbox. Let me know your best benchmark times!',
+    courseTitle: 'Full-Stack AI Engineering',
+    likes: 48,
+    likedByMe: true,
+    repliesCount: 12,
+    createdAt: '2 hours ago',
+    tags: ['AI', 'VectorSearch', 'Challenge'],
   },
   {
-    id: 'enroll-alex-ux',
+    id: 'post-2',
     userId: 'user-learner-1',
-    courseId: 'course-design-systems',
-    enrolledAt: '2026-10-29T16:00:00Z',
-    progressPercentage: 20,
-    completedLessonIds: ['lesson-ux-1'],
-    lastLessonId: 'lesson-ux-2',
-    lastAccessedAt: new Date(Date.now() - 86400000).toISOString(),
-    certificateIssued: false
-  }
+    userName: 'Alex Rivers',
+    userAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=250&q=80',
+    userRank: 'Void Navigator III',
+    content: 'Just unlocked the "Skill Tree Explorer" achievement! Mastered 3 connected nodes in the Programming Tree. The visual dependency graph made prerequisite gaps immediately obvious.',
+    badgeEarned: 'Skill Tree Explorer',
+    likes: 31,
+    likedByMe: false,
+    repliesCount: 5,
+    createdAt: '5 hours ago',
+    tags: ['Achievement', 'SkillTree', 'Milestone'],
+  },
 ];
 
 const DEFAULT_LEADERBOARD: LeaderboardEntry[] = [
-  {
-    rank: 1,
-    userId: 'u-lead-1',
-    name: 'Elena Rostova',
-    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80',
-    xp: 1420,
-    streakDays: 19,
-    tier: 'Diamond'
-  },
-  {
-    rank: 2,
-    userId: 'u-lead-2',
-    name: 'Hiroshi Tanaka',
-    avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=150&q=80',
-    xp: 1250,
-    streakDays: 14,
-    tier: 'Diamond'
-  },
-  {
-    rank: 3,
-    userId: 'u-lead-3',
-    name: 'Maya Patel',
-    avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=150&q=80',
-    xp: 1090,
-    streakDays: 11,
-    tier: 'Diamond'
-  },
-  {
-    rank: 4,
-    userId: 'user-learner-1',
-    name: 'Alex Rivers',
-    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=250&q=80',
-    xp: 840,
-    streakDays: 6,
-    tier: 'Gold',
-    isCurrentUser: true
-  },
-  {
-    rank: 5,
-    userId: 'u-lead-4',
-    name: 'Liam O’Connor',
-    avatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=150&q=80',
-    xp: 790,
-    streakDays: 5,
-    tier: 'Gold'
-  },
-  {
-    rank: 6,
-    userId: 'u-lead-5',
-    name: 'Zoe Martinez',
-    avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=150&q=80',
-    xp: 680,
-    streakDays: 4,
-    tier: 'Silver'
-  }
-];
-
-const DEFAULT_SUBMISSIONS: Submission[] = [
-  {
-    id: 'sub-1',
-    assignmentId: 'assign-ai-1',
-    lessonId: 'lesson-ai-6',
-    courseId: 'course-ai-agentic',
-    studentId: 'user-learner-1',
-    studentName: 'Alex Rivers',
-    studentAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=250&q=80',
-    content: `// ReAct Agent Implementation with Tool Schema Dispatcher
-export class ResearchAgent {
-  private tools: Map<string, Function> = new Map();
-  
-  registerTool(name: string, fn: Function) {
-    this.tools.set(name, fn);
-  }
-
-  async runStep(thought: string, toolName: string, args: any) {
-    console.log('[Thought]:', thought);
-    const tool = this.tools.get(toolName);
-    if (!tool) throw new Error(\`Tool \${toolName} not found\`);
-    const observation = await tool(args);
-    return { thought, observation };
-  }
-}`,
-    submittedAt: '2026-11-02T18:00:00Z',
-    status: 'pending'
-  }
-];
-
-const DEFAULT_NOTES: Note[] = [
-  {
-    id: 'note-1',
-    userId: 'user-learner-1',
-    courseId: 'course-ai-agentic',
-    lessonId: 'lesson-ai-2',
-    lessonTitle: 'Vector Databases, Hybrid Search & RAG Architecture',
-    text: 'Reciprocal Rank Fusion (RRF) parameter k=60 balances out top ranks between keyword BM25 and vector embeddings without scale distortion.',
-    createdAt: '2026-11-02T15:20:00Z'
-  }
+  { rank: 1, userId: 'user-admin-1', name: 'Marcus Vance', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=250&q=80', xp: 9999, streakDays: 60, tier: 'Diamond', activeWorld: 'Technology World' },
+  { rank: 2, userId: 'user-instructor-1', name: 'Dr. Sarah Chen', avatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=250&q=80', xp: 5800, streakDays: 28, tier: 'Diamond', activeWorld: 'Technology World' },
+  { rank: 3, userId: 'user-top-3', name: 'Elena Rostov', avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=250&q=80', xp: 3200, streakDays: 19, tier: 'Gold', activeWorld: 'Programming World' },
+  { rank: 4, userId: 'user-learner-1', name: 'Alex Rivers', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=250&q=80', xp: 1420, streakDays: 7, tier: 'Gold', isCurrentUser: true, activeWorld: 'Programming World' },
+  { rank: 5, userId: 'user-top-5', name: 'Kenji Sato', avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=250&q=80', xp: 1180, streakDays: 5, tier: 'Silver', activeWorld: 'Design World' },
+  { rank: 6, userId: 'user-top-6', name: 'Zoe Morales', avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=250&q=80', xp: 950, streakDays: 4, tier: 'Silver', activeWorld: 'Business World' },
 ];
 
 class Database {
   private data: DatabaseSchema;
 
   constructor() {
-    this.data = this.loadDatabase();
+    this.data = this.loadData();
   }
 
-  private loadDatabase(): DatabaseSchema {
+  private loadData(): DatabaseSchema {
     try {
       if (!fs.existsSync(DATA_DIR)) {
         fs.mkdirSync(DATA_DIR, { recursive: true });
       }
+
       if (fs.existsSync(DB_FILE)) {
         const raw = fs.readFileSync(DB_FILE, 'utf-8');
-        return JSON.parse(raw);
+        const parsed = JSON.parse(raw);
+        // Ensure new arrays exist
+        if (!parsed.worlds || parsed.worlds.length === 0) parsed.worlds = DEFAULT_WORLDS;
+        if (!parsed.skills || parsed.skills.length === 0) parsed.skills = DEFAULT_SKILLS;
+        if (!parsed.studyGroups) parsed.studyGroups = DEFAULT_STUDY_GROUPS;
+        if (!parsed.socialPosts) parsed.socialPosts = DEFAULT_SOCIAL_POSTS;
+        if (!parsed.bookmarks) parsed.bookmarks = [];
+        return parsed;
       }
     } catch (err) {
-      console.warn('Could not read existing db.json, generating default seed data:', err);
+      console.warn('Could not read existing db.json, generating default NOVA universe store:', err);
     }
 
-    const initialData: DatabaseSchema = {
+    const initial: DatabaseSchema = {
       users: DEFAULT_USERS,
+      worlds: DEFAULT_WORLDS,
+      skills: DEFAULT_SKILLS,
       courses: DEFAULT_COURSES,
       quizzes: DEFAULT_QUIZZES,
       flashcardDecks: DEFAULT_FLASHCARDS,
       enrollments: DEFAULT_ENROLLMENTS,
       achievements: DEFAULT_ACHIEVEMENTS,
-      dailyChallenges: DEFAULT_CHALLENGES,
-      learningPaths: DEFAULT_LEARNING_PATHS,
-      notes: DEFAULT_NOTES,
-      submissions: DEFAULT_SUBMISSIONS,
+      dailyChallenges: DEFAULT_DAILY_CHALLENGES,
+      learningPaths: [],
+      notes: [],
+      bookmarks: [],
+      submissions: [],
       leaderboard: DEFAULT_LEADERBOARD,
+      studyGroups: DEFAULT_STUDY_GROUPS,
+      socialPosts: DEFAULT_SOCIAL_POSTS,
       settings: {
         geminiApiKey: process.env.GEMINI_API_KEY || '',
+        openaiApiKey: process.env.OPENAI_API_KEY || '',
         maintenanceMode: false,
-        allowRegistration: true
-      }
+        allowRegistration: true,
+      },
     };
-    this.saveDataDirect(initialData);
-    return initialData;
+
+    this.saveData(initial);
+    return initial;
   }
 
-  private saveDataDirect(data: DatabaseSchema) {
+  private saveData(dataToSave: DatabaseSchema) {
     try {
       if (!fs.existsSync(DATA_DIR)) {
         fs.mkdirSync(DATA_DIR, { recursive: true });
       }
-      fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2), 'utf-8');
+      fs.writeFileSync(DB_FILE, JSON.stringify(dataToSave, null, 2), 'utf-8');
     } catch (err) {
-      console.error('Failed to write db.json:', err);
+      console.warn('Unable to persist db.json to disk (read-only environment):', err);
     }
   }
 
   public save() {
-    this.saveDataDirect(this.data);
+    this.saveData(this.data);
   }
 
   public getData(): DatabaseSchema {
@@ -930,128 +1310,198 @@ class Database {
   public getUserById(id: string) { return this.data.users.find(u => u.id === id); }
   public getUserByEmail(email: string) { return this.data.users.find(u => u.email.toLowerCase() === email.toLowerCase()); }
   public updateUser(id: string, updates: Partial<User>) {
-    const idx = this.data.users.findIndex(u => u.id === id);
-    if (idx !== -1) {
-      this.data.users[idx] = { ...this.data.users[idx], ...updates };
-      this.save();
-      return this.data.users[idx];
-    }
-    return null;
+    const user = this.getUserById(id);
+    if (!user) return null;
+    Object.assign(user, updates);
+    this.save();
+    return user;
   }
 
-  // Add XP and level logic
-  public addXp(userId: string, xpPoints: number): { user: User; leveledUp: boolean; newLevel: number } {
+  // XP & Levels
+  public addXp(userId: string, xpAmount: number) {
     const user = this.getUserById(userId);
-    if (!user) throw new Error('User not found');
-    const oldLevel = user.level;
-    const newXp = user.xp + xpPoints;
-    // Level formula: level = Math.floor(newXp / 300) + 1
-    const newLevel = Math.max(1, Math.floor(newXp / 300) + 1);
-    const leveledUp = newLevel > oldLevel;
+    if (!user) return { user: null, leveledUp: false, oldLevel: 1, newLevel: 1 };
 
-    user.xp = newXp;
+    const oldLevel = user.level;
+    user.xp += xpAmount;
+
+    // Level formula: Level = floor(xp / 300) + 1
+    const newLevel = Math.max(1, Math.floor(user.xp / 300) + 1);
+    const leveledUp = newLevel > oldLevel;
     user.level = newLevel;
 
-    // Update leaderboard if user is on it
-    const lbIdx = this.data.leaderboard.findIndex(l => l.userId === userId);
-    if (lbIdx !== -1) {
-      this.data.leaderboard[lbIdx].xp = newXp;
-      this.data.leaderboard.sort((a, b) => b.xp - a.xp);
-      this.data.leaderboard.forEach((item, index) => { item.rank = index + 1; });
+    // Update leaderboard entry
+    const lb = this.data.leaderboard.find(l => l.userId === userId);
+    if (lb) {
+      lb.xp = user.xp;
     }
 
     this.save();
-    return { user, leveledUp, newLevel };
+    return { user, leveledUp, oldLevel, newLevel };
+  }
+
+  // Worlds
+  public getWorlds() { return this.data.worlds; }
+  public getWorldById(id: string) { return this.data.worlds.find(w => w.id === id || w.slug === id); }
+  public createWorld(world: LearningWorld) {
+    this.data.worlds.push(world);
+    this.save();
+    return world;
+  }
+
+  // Skills
+  public getSkills(worldId?: string) {
+    if (worldId && worldId !== 'all') {
+      return this.data.skills.filter(s => s.worldId === worldId);
+    }
+    return this.data.skills;
+  }
+  public getSkillById(id: string) { return this.data.skills.find(s => s.id === id); }
+  public unlockSkillNode(skillId: string, userId: string) {
+    const skill = this.getSkillById(skillId);
+    if (!skill) return null;
+
+    skill.status = 'mastered';
+    skill.masteryPercentage = 100;
+
+    // Check next skills
+    skill.nextSkills.forEach(nextId => {
+      const nextSkill = this.getSkillById(nextId);
+      if (nextSkill && nextSkill.status === 'locked') {
+        nextSkill.status = 'available';
+      }
+    });
+
+    const user = this.getUserById(userId);
+    if (user) {
+      if (!user.skillsMastered) user.skillsMastered = [];
+      if (!user.skillsMastered.includes(skillId)) {
+        user.skillsMastered.push(skillId);
+      }
+      this.addXp(userId, skill.xpRequired);
+    }
+
+    this.save();
+    return skill;
+  }
+
+  // Skill Radar
+  public getSkillRadar(userId: string): SkillRadarItem[] {
+    const user = this.getUserById(userId);
+    const mastered = user?.skillsMastered || [];
+
+    return [
+      { subject: 'Programming Core', value: mastered.includes('skill-3') ? 92 : 65, fullMark: 100, growth: '+14%' },
+      { subject: 'AI & Vector Systems', value: mastered.includes('skill-tech-1') ? 88 : 50, fullMark: 100, growth: '+22%' },
+      { subject: 'Cloud & Infrastructure', value: 74, fullMark: 100, growth: '+8%' },
+      { subject: 'Spatial & UX Design', value: mastered.includes('skill-des-1') ? 82 : 45, fullMark: 100, growth: '+11%' },
+      { subject: 'Algorithmic Systems', value: 68, fullMark: 100, growth: '+15%' },
+      { subject: 'Cognitive Velocity', value: 85, fullMark: 100, growth: '+18%' },
+    ];
   }
 
   // Courses
-  public getCourses() { return this.data.courses; }
-  public getCourseById(id: string) { return this.data.courses.find(c => c.id === id); }
-  public getCourseBySlug(slug: string) { return this.data.courses.find(c => c.slug === slug); }
+  public getCourses(filterWorld?: string) {
+    if (filterWorld && filterWorld !== 'All') {
+      return this.data.courses.filter(c => c.worldId === filterWorld || c.category.toLowerCase() === filterWorld.toLowerCase());
+    }
+    return this.data.courses;
+  }
+  public getCourseById(id: string) {
+    return this.data.courses.find(c => c.id === id || c.slug === id);
+  }
   public createCourse(course: Course) {
-    this.data.courses.unshift(course);
+    this.data.courses.push(course);
+    // Increment world course count
+    const world = this.getWorldById(course.worldId);
+    if (world) {
+      world.coursesCount = (world.coursesCount || 0) + 1;
+    }
     this.save();
     return course;
   }
   public updateCourse(id: string, updates: Partial<Course>) {
-    const idx = this.data.courses.findIndex(c => c.id === id);
-    if (idx !== -1) {
-      this.data.courses[idx] = { ...this.data.courses[idx], ...updates };
-      this.save();
-      return this.data.courses[idx];
-    }
-    return null;
+    const course = this.getCourseById(id);
+    if (!course) return null;
+    Object.assign(course, updates);
+    this.save();
+    return course;
   }
 
-  // Quizzes & Flashcards
-  public getQuizById(id: string) { return this.data.quizzes.find(q => q.id === id); }
-  public getFlashcardDeckById(id: string) { return this.data.flashcardDecks.find(d => d.id === id); }
-
-  // Enrollments & Progress
-  public getEnrollmentsByUser(userId: string) {
-    return this.data.enrollments.filter(e => e.userId === userId);
-  }
+  // Enrollments
   public getEnrollment(userId: string, courseId: string) {
     return this.data.enrollments.find(e => e.userId === userId && e.courseId === courseId);
   }
-  public enrollUser(userId: string, courseId: string): Enrollment {
+  public enrollCourse(userId: string, courseId: string) {
     let enrollment = this.getEnrollment(userId, courseId);
     if (!enrollment) {
+      const course = this.getCourseById(courseId);
+      const firstLessonId = course?.chapters?.[0]?.lessons?.[0]?.id;
+
       enrollment = {
-        id: `enroll-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+        id: `enr-${Date.now()}`,
         userId,
         courseId,
         enrolledAt: new Date().toISOString(),
         progressPercentage: 0,
         completedLessonIds: [],
+        lastLessonId: firstLessonId,
         lastAccessedAt: new Date().toISOString(),
-        certificateIssued: false
       };
       this.data.enrollments.push(enrollment);
-      // Increment course enrollments count
-      const course = this.getCourseById(courseId);
+
       if (course) {
         course.enrollmentsCount = (course.enrollmentsCount || 0) + 1;
       }
+
       this.save();
     }
     return enrollment;
   }
-  public markLessonComplete(userId: string, courseId: string, lessonId: string) {
+
+  public completeLesson(userId: string, courseId: string, lessonId: string) {
     let enrollment = this.getEnrollment(userId, courseId);
     if (!enrollment) {
-      enrollment = this.enrollUser(userId, courseId);
+      enrollment = this.enrollCourse(userId, courseId);
     }
+
+    const course = this.getCourseById(courseId);
+    let xpAdded = 0;
+
+    if (course) {
+      for (const ch of course.chapters) {
+        const les = ch.lessons.find(l => l.id === lessonId);
+        if (les) {
+          xpAdded = les.xpReward || 50;
+          break;
+        }
+      }
+    }
+    if (xpAdded === 0) xpAdded = 50;
+
     if (!enrollment.completedLessonIds.includes(lessonId)) {
       enrollment.completedLessonIds.push(lessonId);
+
+      const totalLessons = course ? course.chapters.reduce((sum, c) => sum + c.lessons.length, 0) : 1;
+      enrollment.progressPercentage = Math.min(100, Math.round((enrollment.completedLessonIds.length / totalLessons) * 100));
+
+      this.addXp(userId, xpAdded);
     }
+
     enrollment.lastLessonId = lessonId;
     enrollment.lastAccessedAt = new Date().toISOString();
 
-    // Calculate percentage
-    const course = this.getCourseById(courseId);
-    if (course) {
-      const totalLessons = course.chapters.reduce((acc, ch) => acc + ch.lessons.length, 0);
-      enrollment.progressPercentage = totalLessons > 0 
-        ? Math.round((enrollment.completedLessonIds.length / totalLessons) * 100) 
-        : 100;
-      if (enrollment.progressPercentage >= 100) {
-        enrollment.certificateIssued = true;
-      }
-    }
-
-    // Update Daily Challenge progress if lesson challenge exists
-    const lessonChallenge = this.data.dailyChallenges.find(c => c.type === 'lessons');
-    if (lessonChallenge && !lessonChallenge.completed) {
-      lessonChallenge.current = Math.min(lessonChallenge.goal, lessonChallenge.current + 1);
-      if (lessonChallenge.current >= lessonChallenge.goal) {
-        lessonChallenge.completed = true;
-      }
+    if (enrollment.progressPercentage >= 100) {
+      enrollment.certificateIssued = true;
     }
 
     this.save();
-    return enrollment;
+    return { enrollment, xpAdded };
   }
+
+  // Quizzes & Flashcards
+  public getQuizById(id: string) { return this.data.quizzes.find(q => q.id === id); }
+  public getFlashcardDeckById(id: string) { return this.data.flashcardDecks.find(d => d.id === id); }
 
   // Achievements
   public getAchievements() { return this.data.achievements; }
@@ -1079,10 +1529,45 @@ class Database {
     return null;
   }
 
-  // Learning Paths
-  public getLearningPaths() { return this.data.learningPaths; }
+  // Study Groups
+  public getStudyGroups() { return this.data.studyGroups; }
+  public joinStudyGroup(groupId: string, userId: string) {
+    const group = this.data.studyGroups.find(g => g.id === groupId);
+    if (group) {
+      group.joined = !group.joined;
+      group.memberCount += group.joined ? 1 : -1;
+      this.save();
+      return group;
+    }
+    return null;
+  }
 
-  // Notes
+  // Social Posts
+  public getSocialPosts() { return this.data.socialPosts; }
+  public createSocialPost(post: Omit<SocialPost, 'id' | 'createdAt' | 'likes' | 'repliesCount'>) {
+    const newPost: SocialPost = {
+      ...post,
+      id: `post-${Date.now()}`,
+      createdAt: 'Just now',
+      likes: 0,
+      repliesCount: 0,
+    };
+    this.data.socialPosts.unshift(newPost);
+    this.save();
+    return newPost;
+  }
+  public likePost(postId: string) {
+    const post = this.data.socialPosts.find(p => p.id === postId);
+    if (post) {
+      post.likedByMe = !post.likedByMe;
+      post.likes += post.likedByMe ? 1 : -1;
+      this.save();
+      return post;
+    }
+    return null;
+  }
+
+  // Notes & Bookmarks
   public getNotes(userId: string, courseId?: string) {
     return this.data.notes.filter(n => n.userId === userId && (!courseId || n.courseId === courseId));
   }
@@ -1094,7 +1579,7 @@ class Database {
       lessonId,
       lessonTitle,
       text,
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
     };
     this.data.notes.unshift(note);
     this.save();
@@ -1110,32 +1595,6 @@ class Database {
     return false;
   }
 
-  // Submissions
-  public getSubmissions() { return this.data.submissions; }
-  public submitAssignment(submission: Omit<Submission, 'id' | 'submittedAt' | 'status'>) {
-    const newSub: Submission = {
-      ...submission,
-      id: `sub-${Date.now()}`,
-      submittedAt: new Date().toISOString(),
-      status: 'pending'
-    };
-    this.data.submissions.unshift(newSub);
-    this.save();
-    return newSub;
-  }
-  public gradeSubmission(id: string, score: number, feedback: string, gradedBy: string) {
-    const sub = this.data.submissions.find(s => s.id === id);
-    if (sub) {
-      sub.status = 'graded';
-      sub.score = score;
-      sub.feedback = feedback;
-      sub.gradedBy = gradedBy;
-      this.save();
-      return sub;
-    }
-    return null;
-  }
-
   // Leaderboard
   public getLeaderboard() { return this.data.leaderboard; }
 
@@ -1143,6 +1602,7 @@ class Database {
   public getSystemStats(): SystemStats {
     const totalUsers = this.data.users.length;
     const totalCourses = this.data.courses.length;
+    const totalWorlds = this.data.worlds.length;
     const totalEnrollments = this.data.enrollments.length;
     const completedEnrollments = this.data.enrollments.filter(e => e.progressPercentage >= 100).length;
     const platformCompletionRate = totalEnrollments > 0 ? Math.round((completedEnrollments / totalEnrollments) * 100) : 0;
@@ -1152,18 +1612,19 @@ class Database {
       totalUsers,
       activeToday: Math.max(1, Math.round(totalUsers * 0.8)),
       totalCourses,
+      totalWorlds,
       totalEnrollments,
       platformCompletionRate,
       totalXpAwarded,
       weeklyActivity: [
-        { day: 'Mon', hours: 1.8, xp: 120 },
-        { day: 'Tue', hours: 2.4, xp: 180 },
-        { day: 'Wed', hours: 1.2, xp: 90 },
-        { day: 'Thu', hours: 3.1, xp: 240 },
-        { day: 'Fri', hours: 2.0, xp: 150 },
-        { day: 'Sat', hours: 3.5, xp: 280 },
-        { day: 'Sun', hours: 2.8, xp: 220 }
-      ]
+        { day: 'Mon', hours: 2.4, xp: 180 },
+        { day: 'Tue', hours: 3.1, xp: 240 },
+        { day: 'Wed', hours: 1.8, xp: 140 },
+        { day: 'Thu', hours: 4.2, xp: 320 },
+        { day: 'Fri', hours: 2.9, xp: 210 },
+        { day: 'Sat', hours: 4.8, xp: 380 },
+        { day: 'Sun', hours: 3.5, xp: 290 },
+      ],
     };
   }
 }

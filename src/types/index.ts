@@ -7,6 +7,7 @@ export interface User {
   role: UserRole;
   avatar: string;
   bio?: string;
+  rankTitle?: string;
   xp: number;
   level: number;
   streakDays: number;
@@ -16,9 +17,52 @@ export interface User {
   dailyGoalMinutesCompleted: number;
   themePreference?: 'light' | 'dark' | 'system';
   soundEnabled?: boolean;
+  skillsMastered?: string[];
+  activeWorldId?: string;
 }
 
-export type CourseLevel = 'Beginner' | 'Intermediate' | 'Advanced';
+export type CourseLevel = 'Beginner' | 'Intermediate' | 'Advanced' | 'Expert';
+
+export interface LearningWorld {
+  id: string;
+  title: string;
+  slug: string;
+  description: string;
+  longDescription?: string;
+  color: string;
+  accentColor: string;
+  gradient: string;
+  icon: string;
+  bannerImage: string;
+  coursesCount: number;
+  learnersCount: number;
+  difficultyTier: string;
+  skillsCount: number;
+  featuredCourseId?: string;
+}
+
+export interface SkillNode {
+  id: string;
+  worldId: string;
+  name: string;
+  category: string;
+  level: number;
+  xpRequired: number;
+  status: 'locked' | 'available' | 'in_progress' | 'mastered';
+  prerequisites: string[];
+  description: string;
+  nextSkills: string[];
+  icon: string;
+  masteryPercentage: number;
+  relatedCourseId?: string;
+}
+
+export interface SkillRadarItem {
+  subject: string;
+  value: number; // 0 - 100
+  fullMark: number;
+  growth: string;
+}
 
 export interface Resource {
   id: string;
@@ -86,7 +130,40 @@ export interface Submission {
   gradedBy?: string;
 }
 
-export type LessonType = 'video' | 'text' | 'quiz' | 'flashcards' | 'assignment';
+export type LessonType = 'video' | 'text' | 'quiz' | 'flashcards' | 'assignment' | 'quest' | 'code';
+
+export interface CodeExercise {
+  id: string;
+  title: string;
+  instructions: string;
+  language: string;
+  starterCode: string;
+  solutionCode: string;
+  testCases: {
+    input: string;
+    expectedOutput: string;
+    description: string;
+  }[];
+  hints: string[];
+}
+
+export interface VisualDiagram {
+  id: string;
+  title: string;
+  description: string;
+  nodes: {
+    id: string;
+    label: string;
+    sublabel: string;
+    color: string;
+    icon?: string;
+  }[];
+  connections: {
+    from: string;
+    to: string;
+    label?: string;
+  }[];
+}
 
 export interface Lesson {
   id: string;
@@ -102,7 +179,17 @@ export interface Lesson {
   quizId?: string;
   flashcardDeckId?: string;
   assignmentId?: string;
+  codeExercise?: CodeExercise;
+  visualDiagram?: VisualDiagram;
   resources?: Resource[];
+  // 6 Quest Stages for Quest Lessons
+  stages?: {
+    stage1Concept?: string;
+    stage2VisualDiagram?: VisualDiagram;
+    stage3Content?: string;
+    stage4Exercise?: CodeExercise;
+    stage5QuizId?: string;
+  };
 }
 
 export interface Chapter {
@@ -129,6 +216,8 @@ export interface Course {
   slug: string;
   description: string;
   shortDescription: string;
+  worldId: string;
+  worldTitle?: string;
   category: string;
   level: CourseLevel;
   instructorId: string;
@@ -145,6 +234,8 @@ export interface Course {
   prerequisites: string[];
   published: boolean;
   featured?: boolean;
+  xpRewardTotal?: number;
+  badgeReward?: string;
   chapters: Chapter[];
   reviews?: CourseReview[];
 }
@@ -167,7 +258,7 @@ export interface Achievement {
   description: string;
   icon: string;
   xpReward: number;
-  category: 'streak' | 'xp' | 'quizzes' | 'courses' | 'special';
+  category: 'streak' | 'xp' | 'quizzes' | 'courses' | 'special' | 'skills';
   unlockedAt?: string;
   progress?: number;
   maxProgress?: number;
@@ -183,13 +274,14 @@ export interface DailyChallenge {
   completed: boolean;
   claimed: boolean;
   icon: string;
-  type: 'lessons' | 'quiz' | 'minutes' | 'streak';
+  type: 'lessons' | 'quiz' | 'minutes' | 'streak' | 'skill';
 }
 
 export interface LearningPath {
   id: string;
   title: string;
   description: string;
+  worldId?: string;
   category: string;
   targetRole: string;
   coursesCount: number;
@@ -209,10 +301,20 @@ export interface Note {
   createdAt: string;
 }
 
+export interface Bookmark {
+  id: string;
+  userId: string;
+  courseId: string;
+  lessonId: string;
+  lessonTitle: string;
+  createdAt: string;
+}
+
 export interface SystemStats {
   totalUsers: number;
   activeToday: number;
   totalCourses: number;
+  totalWorlds: number;
   totalEnrollments: number;
   platformCompletionRate: number;
   totalXpAwarded: number;
@@ -228,4 +330,33 @@ export interface LeaderboardEntry {
   streakDays: number;
   tier: 'Diamond' | 'Gold' | 'Silver' | 'Bronze';
   isCurrentUser?: boolean;
+  activeWorld?: string;
+}
+
+export interface StudyGroup {
+  id: string;
+  name: string;
+  tagline: string;
+  description: string;
+  worldId: string;
+  memberCount: number;
+  banner: string;
+  activeMission: string;
+  joined?: boolean;
+}
+
+export interface SocialPost {
+  id: string;
+  userId: string;
+  userName: string;
+  userAvatar: string;
+  userRank: string;
+  content: string;
+  badgeEarned?: string;
+  courseTitle?: string;
+  likes: number;
+  likedByMe?: boolean;
+  repliesCount: number;
+  createdAt: string;
+  tags: string[];
 }

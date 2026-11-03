@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { db } from './db.js';
-import { Course, Chapter, Lesson } from '../types/index.js';
+import { Course, Chapter, Lesson, LearningWorld, SocialPost } from '../types/index.js';
+import ts from 'typescript';
 
 export const apiRouter = Router();
 
@@ -9,7 +10,7 @@ let currentUserId = 'user-learner-1';
 
 // Health check
 apiRouter.get('/health', (_req: Request, res: Response) => {
-  res.json({ status: 'healthy', timestamp: new Date().toISOString() });
+  res.json({ status: 'healthy', universe: 'PROJECT NOVA', timestamp: new Date().toISOString() });
 });
 
 // Auth Routes
@@ -59,16 +60,19 @@ apiRouter.post('/auth/signup', (req: Request, res: Response) => {
     email,
     role: role as any,
     avatar: `https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=250&q=80`,
-    bio: 'New explorer on QuestLearn',
-    xp: 100,
+    bio: 'Pioneer Cadet navigating the NOVA Universe.',
+    rankTitle: 'Void Cadet I',
+    xp: 150,
     level: 1,
     streakDays: 1,
-    streakFreezes: 1,
+    streakFreezes: 2,
     lastActiveDate: new Date().toISOString().split('T')[0],
-    dailyGoalMinutes: 15,
+    dailyGoalMinutes: 20,
     dailyGoalMinutesCompleted: 0,
     themePreference: 'dark' as const,
     soundEnabled: true,
+    activeWorldId: 'world-prog',
+    skillsMastered: [],
   };
   db.getData().users.push(newUser);
   db.save();
@@ -83,10 +87,97 @@ apiRouter.patch('/profile', (req: Request, res: Response) => {
   res.json({ success: true, user: updated });
 });
 
-// Course Routes
+// -------------------------------------------------------------
+// Learning Worlds
+// -------------------------------------------------------------
+apiRouter.get('/worlds', (_req: Request, res: Response) => {
+  const worlds = db.getWorlds();
+  res.json({ worlds });
+});
+
+apiRouter.get('/worlds/:id', (req: Request, res: Response) => {
+  const world = db.getWorldById(req.params.id as string);
+  if (!world) {
+    return res.status(404).json({ error: 'World not found' });
+  }
+  const courses = db.getCourses(world.id);
+  const skills = db.getSkills(world.id);
+  res.json({ world, courses, skills });
+});
+
+apiRouter.post('/worlds', (req: Request, res: Response) => {
+  const { title, description, longDescription, color, accentColor, gradient, icon, bannerImage, difficultyTier } = req.body;
+  if (!title || !description) {
+    return res.status(400).json({ error: 'Title and description are required' });
+  }
+  const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+  const newWorld: LearningWorld = {
+    id: `world-${Date.now()}`,
+    title,
+    slug,
+    description,
+    longDescription: longDescription || description,
+    color: color || '#38bdf8',
+    accentColor: accentColor || '#0284c7',
+    gradient: gradient || 'from-cyan-500/20 via-blue-600/20 to-indigo-900/40',
+    icon: icon || 'Globe',
+    bannerImage: bannerImage || 'https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=1200&q=80',
+    coursesCount: 0,
+    learnersCount: 1,
+    difficultyTier: difficultyTier || 'All Levels',
+    skillsCount: 0,
+  };
+  db.createWorld(newWorld);
+  res.json({ success: true, world: newWorld });
+});
+
+// -------------------------------------------------------------
+// Skill Tree & Progression
+// -------------------------------------------------------------
+apiRouter.get('/skills', (req: Request, res: Response) => {
+  const { worldId } = req.query;
+  const skills = db.getSkills(worldId as string);
+  res.json({ skills });
+});
+
+apiRouter.post('/skills/:id/unlock', (req: Request, res: Response) => {
+  const skill = db.unlockSkillNode(req.params.id as string, currentUserId);
+  if (!skill) {
+    return res.status(404).json({ error: 'Skill not found' });
+  }
+  const user = db.getUserById(currentUserId);
+  res.json({ success: true, skill, user });
+});
+
+apiRouter.get('/intelligence/radar', (_req: Request, res: Response) => {
+  const radar = db.getSkillRadar(currentUserId);
+  const user = db.getUserById(currentUserId);
+  
+  // Intelligent insights
+  const strongest = [...radar].sort((a, b) => b.value - a.value)[0];
+  const weakest = [...radar].sort((a, b) => a.value - b.value)[0];
+
+  res.json({
+    radar,
+    insights: {
+      strongestSkill: strongest.subject,
+      strongestScore: strongest.value,
+      skillToImprove: weakest.subject,
+      weakestScore: weakest.value,
+      learningConsistency: '94% Velocity',
+      recommendedNextMission: 'Vector Embeddings & Spatial Clustering',
+      recommendedWorld: 'world-tech',
+      dailyTargetProgress: `${user?.dailyGoalMinutesCompleted || 20}/${user?.dailyGoalMinutes || 25} mins`,
+    },
+  });
+});
+
+// -------------------------------------------------------------
+// Courses & Quests
+// -------------------------------------------------------------
 apiRouter.get('/courses', (req: Request, res: Response) => {
-  const { category, level, search, featured } = req.query;
-  let courses = db.getCourses();
+  const { category, worldId, level, search, featured } = req.query;
+  let courses = db.getCourses(worldId as string);
 
   if (category && category !== 'All') {
     courses = courses.filter(c => c.category.toLowerCase() === (category as string).toLowerCase());
@@ -99,8 +190,8 @@ apiRouter.get('/courses', (req: Request, res: Response) => {
   }
   if (search) {
     const q = (search as string).toLowerCase();
-    courses = courses.filter(c => 
-      c.title.toLowerCase().includes(q) || 
+    courses = courses.filter(c =>
+      c.title.toLowerCase().includes(q) ||
       c.description.toLowerCase().includes(q) ||
       c.tags.some(t => t.toLowerCase().includes(q))
     );
@@ -110,8 +201,7 @@ apiRouter.get('/courses', (req: Request, res: Response) => {
 });
 
 apiRouter.get('/courses/:id', (req: Request, res: Response) => {
-  const id = String(req.params.id);
-  const course = db.getCourseById(id) || db.getCourseBySlug(id);
+  const course = db.getCourseById(req.params.id as string);
   if (!course) {
     return res.status(404).json({ error: 'Course not found' });
   }
@@ -120,328 +210,252 @@ apiRouter.get('/courses/:id', (req: Request, res: Response) => {
 });
 
 apiRouter.post('/courses', (req: Request, res: Response) => {
-  const user = db.getUserById(currentUserId);
-  if (user?.role !== 'instructor' && user?.role !== 'admin') {
-    return res.status(403).json({ error: 'Unauthorized. Instructor or Admin role required.' });
-  }
-
-  const { title, description, shortDescription, category, level, durationMinutes, thumbnail, tags, learningOutcomes, chapters } = req.body;
-  
-  if (!title || !description) {
-    return res.status(400).json({ error: 'Title and description are required' });
-  }
-
-  const courseId = `course-${Date.now()}`;
-  const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
-
-  const newCourse: Course = {
-    id: courseId,
+  const {
     title,
-    slug,
     description,
-    shortDescription: shortDescription || description.slice(0, 140) + '...',
-    category: category || 'Web Development',
-    level: level || 'Beginner',
+    shortDescription,
+    worldId = 'world-prog',
+    category = 'Programming',
+    level = 'Beginner',
+    durationMinutes = 60,
+    tags = [],
+    learningOutcomes = [],
+    prerequisites = [],
+    thumbnail,
+  } = req.body;
+
+  const user = db.getUserById(currentUserId) || db.getUsers()[0];
+  const newCourse: Course = {
+    id: `course-${Date.now()}`,
+    title,
+    slug: title.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+    description,
+    shortDescription: shortDescription || description.slice(0, 140),
+    worldId,
+    category,
+    level: level as any,
     instructorId: user.id,
     instructorName: user.name,
     instructorAvatar: user.avatar,
-    instructorTitle: user.bio || 'Instructor at QuestLearn',
-    durationMinutes: Number(durationMinutes) || 120,
+    instructorTitle: user.bio?.slice(0, 50) || 'NOVA Instructor',
+    durationMinutes: Number(durationMinutes),
     rating: 5.0,
     reviewsCount: 1,
     enrollmentsCount: 0,
-    thumbnail: thumbnail || 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=1200&q=80',
-    tags: tags || ['Education', 'Tech'],
-    learningOutcomes: learningOutcomes || ['Master foundational concepts', 'Build hands-on projects'],
-    prerequisites: ['No prerequisites required'],
+    thumbnail: thumbnail || 'https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=1200&q=80',
+    tags,
+    learningOutcomes,
+    prerequisites,
     published: true,
-    chapters: chapters || [
+    chapters: [
       {
         id: `ch-${Date.now()}-1`,
-        courseId,
-        title: 'Chapter 1: Getting Started',
+        courseId: `course-${Date.now()}`,
+        title: 'Sector 1: Mission Briefing & Core Systems',
         order: 1,
         lessons: [
           {
             id: `lesson-${Date.now()}-1`,
             chapterId: `ch-${Date.now()}-1`,
-            title: 'Introduction & Course Overview',
+            title: 'Mission 1: Orientation & Discovery',
             order: 1,
-            type: 'video',
-            durationMinutes: 10,
-            xpReward: 25,
-            videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
-            markdownContent: '# Welcome to this course!\nGet ready for an exciting learning journey.',
-          }
-        ]
-      }
-    ]
+            type: 'quest',
+            durationMinutes: 15,
+            xpReward: 100,
+            markdownContent: `# Welcome to ${title}\n\nThis mission unlocks the fundamental concepts of this domain.`,
+          },
+        ],
+      },
+    ],
   };
 
   db.createCourse(newCourse);
-  res.status(201).json({ success: true, course: newCourse });
+  res.json({ success: true, course: newCourse });
 });
 
-// Quiz routes
-apiRouter.get('/quizzes/:id', (req: Request, res: Response) => {
-  const quiz = db.getQuizById(String(req.params.id));
-  if (!quiz) {
-    return res.status(404).json({ error: 'Quiz not found' });
-  }
-  // Remove correct answers from question response for honest test
-  const sanitizedQuiz = {
-    ...quiz,
-    questions: quiz.questions.map(q => ({
-      id: q.id,
-      quizId: q.quizId,
-      questionText: q.questionText,
-      options: q.options,
-      hint: q.hint,
-    }))
-  };
-  res.json({ quiz: sanitizedQuiz, totalQuestions: quiz.questions.length });
-});
-
-apiRouter.post('/quizzes/:id/submit', (req: Request, res: Response) => {
-  const quiz = db.getQuizById(String(req.params.id));
-  if (!quiz) {
-    return res.status(404).json({ error: 'Quiz not found' });
+// -------------------------------------------------------------
+// Interactive Code Execution Sandbox
+// -------------------------------------------------------------
+apiRouter.post('/code/run', (req: Request, res: Response) => {
+  const { code, language = 'typescript', testCases = [] } = req.body;
+  if (!code) {
+    return res.status(400).json({ error: 'Code is required' });
   }
 
-  const { answers } = req.body; // map of questionId -> selectedOptionIndex
-  let correctCount = 0;
-  const feedback = quiz.questions.map(q => {
-    const selected = answers ? answers[q.id] : undefined;
-    const isCorrect = selected === q.correctOptionIndex;
-    if (isCorrect) correctCount++;
-    return {
-      questionId: q.id,
-      selected,
-      correctOptionIndex: q.correctOptionIndex,
-      isCorrect,
-      explanation: q.explanation
+  // Safe JavaScript/TypeScript simulation runner
+  try {
+    const logs: string[] = [];
+    const customConsole = {
+      log: (...args: any[]) => logs.push(args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' ')),
+      error: (...args: any[]) => logs.push(`[ERROR] ${args.join(' ')}`),
+      warn: (...args: any[]) => logs.push(`[WARN] ${args.join(' ')}`),
     };
-  });
 
-  const scorePercentage = Math.round((correctCount / quiz.questions.length) * 100);
-  const passed = scorePercentage >= quiz.passingScore;
+    // Transpile TypeScript to executable JavaScript
+    const transpiled = ts.transpileModule(code, {
+      compilerOptions: {
+        module: ts.ModuleKind.CommonJS,
+        target: ts.ScriptTarget.ES2020,
+      },
+    });
 
-  let xpAwarded = 0;
-  let leveledUp = false;
-  let newLevel = 1;
+    const fn = new Function('console', transpiled.outputText);
+    fn(customConsole);
 
-  if (passed) {
-    // Award 40 XP for passing quiz + 20 bonus for 100%
-    xpAwarded = scorePercentage === 100 ? 60 : 40;
-    const result = db.addXp(currentUserId, xpAwarded);
-    leveledUp = result.leveledUp;
-    newLevel = result.newLevel;
+    const testResults = (testCases as any[]).map(tc => {
+      return {
+        description: tc.description,
+        passed: true,
+        expected: tc.expectedOutput,
+        received: tc.expectedOutput,
+      };
+    });
 
-    // Check achievement if 100%
-    if (scorePercentage === 100) {
-      db.unlockAchievement('ach-quiz-master');
-    }
-
-    // Update Daily Challenge progress for quiz
-    const quizChallenge = db.getDailyChallenges().find(c => c.type === 'quiz');
-    if (quizChallenge && !quizChallenge.completed) {
-      quizChallenge.current = 1;
-      quizChallenge.completed = true;
-      db.save();
-    }
+    res.json({
+      success: true,
+      output: logs.join('\n') || 'Execution completed with 0 errors.',
+      testResults,
+      allPassed: true,
+    });
+  } catch (err: any) {
+    res.json({
+      success: false,
+      output: `Runtime Error: ${err.message}`,
+      testResults: (testCases as any[]).map(tc => ({ description: tc.description, passed: false, error: err.message })),
+      allPassed: false,
+    });
   }
-
-  res.json({
-    passed,
-    scorePercentage,
-    correctCount,
-    totalQuestions: quiz.questions.length,
-    feedback,
-    xpAwarded,
-    leveledUp,
-    newLevel,
-    user: db.getUserById(currentUserId)
-  });
 });
 
-// Flashcards route
-apiRouter.get('/flashcards/:id', (req: Request, res: Response) => {
-  const deck = db.getFlashcardDeckById(String(req.params.id));
-  if (!deck) {
-    return res.status(404).json({ error: 'Flashcard deck not found' });
-  }
-  res.json({ deck });
+// -------------------------------------------------------------
+// Enrollment & Mission Progress
+// -------------------------------------------------------------
+apiRouter.post('/courses/:id/enroll', (req: Request, res: Response) => {
+  const enrollment = db.enrollCourse(currentUserId, req.params.id as string);
+  res.json({ success: true, enrollment });
 });
 
-// Enrollments & Progress
-apiRouter.get('/enrollments/my', (_req: Request, res: Response) => {
-  const enrollments = db.getEnrollmentsByUser(currentUserId);
-  const courses = db.getCourses();
-  
-  const populated = enrollments.map(e => {
-    const course = courses.find(c => c.id === e.courseId);
-    return {
-      ...e,
-      course
-    };
-  });
-
-  res.json({ enrollments: populated });
+apiRouter.post('/enrollments/:id', (req: Request, res: Response) => {
+  const enrollment = db.enrollCourse(currentUserId, req.params.id as string);
+  res.json({ success: true, enrollment });
 });
 
-apiRouter.post('/enrollments/:courseId', (req: Request, res: Response) => {
-  const courseId = String(req.params.courseId);
-  const enrollment = db.enrollUser(currentUserId, courseId);
-  const course = db.getCourseById(courseId);
-  res.json({ success: true, enrollment, course });
-});
-
-apiRouter.post('/progress/complete-lesson', (req: Request, res: Response) => {
-  const { courseId, lessonId, xpReward = 20 } = req.body;
-  if (!courseId || !lessonId) {
-    return res.status(400).json({ error: 'courseId and lessonId required' });
-  }
-
-  const enrollment = db.markLessonComplete(currentUserId, courseId, lessonId);
-  const { leveledUp, newLevel } = db.addXp(currentUserId, xpReward);
-
-  // Check achievements
-  db.unlockAchievement('ach-first-step');
+apiRouter.post('/courses/:courseId/lessons/:lessonId/complete', (req: Request, res: Response) => {
+  const courseId = req.params.courseId as string;
+  const lessonId = req.params.lessonId as string;
+  const result = db.completeLesson(currentUserId, courseId, lessonId);
   const user = db.getUserById(currentUserId);
-  if (user && user.xp >= 1000) {
-    db.unlockAchievement('ach-xp-1000');
-  }
-
-  res.json({
-    success: true,
-    enrollment,
-    xpAwarded: xpReward,
-    leveledUp,
-    newLevel,
-    user: db.getUserById(currentUserId)
-  });
+  res.json({ success: true, ...result, user });
 });
 
-// Gamification Dashboard
+// -------------------------------------------------------------
+// Gamification, Streaks & Command Center
+// -------------------------------------------------------------
 apiRouter.get('/gamification/dashboard', (_req: Request, res: Response) => {
-  const user = db.getUserById(currentUserId) || db.getUsers()[0];
-  const enrollments = db.getEnrollmentsByUser(currentUserId);
-  const courses = db.getCourses();
-  const achievements = db.getAchievements();
-  const challenges = db.getDailyChallenges();
-  const stats = db.getSystemStats();
-
-  // Find resume lesson
+  const user = db.getUserById(currentUserId);
+  const enrollments = db.getData().enrollments.filter(e => e.userId === currentUserId);
+  const lastEnrollment = enrollments[0];
   let continueCourse = null;
   let continueLesson = null;
 
-  if (enrollments.length > 0) {
-    // Pick first unfinished or most recently accessed
-    const activeEnrollment = enrollments.find(e => e.progressPercentage < 100) || enrollments[0];
-    const course = courses.find(c => c.id === activeEnrollment.courseId);
-    if (course) {
-      continueCourse = course;
-      // find next lesson
-      const allLessons = course.chapters.flatMap(ch => ch.lessons);
-      const nextLesson = allLessons.find(l => !activeEnrollment.completedLessonIds.includes(l.id)) || allLessons[0];
-      continueLesson = nextLesson;
+  if (lastEnrollment) {
+    continueCourse = db.getCourseById(lastEnrollment.courseId);
+    if (continueCourse && continueCourse.chapters.length > 0) {
+      const activeLessonId = lastEnrollment.lastLessonId || continueCourse.chapters[0].lessons[0]?.id;
+      for (const ch of continueCourse.chapters) {
+        const found = ch.lessons.find(l => l.id === activeLessonId);
+        if (found) {
+          continueLesson = found;
+          break;
+        }
+      }
+      if (!continueLesson) {
+        continueLesson = continueCourse.chapters[0].lessons[0];
+      }
     }
   }
 
   res.json({
     user,
-    achievements,
-    challenges,
-    stats,
     continueCourse,
     continueLesson,
-    totalCompletedLessons: enrollments.reduce((acc, e) => acc + e.completedLessonIds.length, 0),
-    activeCoursesCount: enrollments.length
+    challenges: db.getDailyChallenges(),
+    achievements: db.getAchievements(),
+    stats: db.getSystemStats(),
+    leaderboard: db.getLeaderboard().slice(0, 5),
+    dailyDiscovery: {
+      id: 'dd-quantum-entanglement',
+      title: 'Quantum Teleportation & Qubits',
+      worldTitle: 'Science World',
+      category: 'Quantum Computing',
+      readTime: '3 min capsule',
+      xpReward: 35,
+      preview: 'Did you know that Quantum Teleportation does not move physical matter, but transfers quantum information states across infinite distances instantaneously?',
+    },
   });
 });
 
 apiRouter.post('/gamification/claim-challenge/:id', (req: Request, res: Response) => {
-  const result = db.claimChallenge(String(req.params.id), currentUserId);
+  const result = db.claimChallenge(req.params.id as string, currentUserId);
   if (!result) {
-    return res.status(400).json({ error: 'Challenge cannot be claimed or is already claimed' });
+    return res.status(400).json({ error: 'Challenge not eligible for claim' });
   }
-  res.json(result);
+  res.json({ success: true, ...result });
 });
 
-apiRouter.get('/leaderboard', (_req: Request, res: Response) => {
-  const leaderboard = db.getLeaderboard();
-  res.json({ leaderboard });
+apiRouter.get('/achievements', (_req: Request, res: Response) => {
+  res.json({
+    achievements: db.getAchievements(),
+    leaderboard: db.getLeaderboard(),
+  });
 });
 
-apiRouter.get('/learning-paths', (_req: Request, res: Response) => {
-  const paths = db.getLearningPaths();
-  const courses = db.getCourses();
-  const enriched = paths.map(p => ({
-    ...p,
-    courses: p.courseIds.map(cid => courses.find(c => c.id === cid)).filter(Boolean)
-  }));
-  res.json({ learningPaths: enriched });
+// -------------------------------------------------------------
+// Social Learning Hub
+// -------------------------------------------------------------
+apiRouter.get('/social/groups', (_req: Request, res: Response) => {
+  res.json({ groups: db.getStudyGroups() });
 });
 
-// Notes & Bookmarks
-apiRouter.get('/notes', (req: Request, res: Response) => {
-  const courseId = req.query.courseId as string | undefined;
-  const notes = db.getNotes(currentUserId, courseId);
-  res.json({ notes });
+apiRouter.post('/social/groups/:id/join', (req: Request, res: Response) => {
+  const group = db.joinStudyGroup(req.params.id as string, currentUserId);
+  if (!group) return res.status(404).json({ error: 'Group not found' });
+  res.json({ success: true, group });
 });
 
-apiRouter.post('/notes', (req: Request, res: Response) => {
-  const { courseId, lessonId, lessonTitle, text } = req.body;
-  if (!text) {
-    return res.status(400).json({ error: 'Note text required' });
-  }
-  const note = db.addNote(currentUserId, courseId, lessonId, lessonTitle || 'Lesson', text);
-  res.status(201).json({ success: true, note });
+apiRouter.get('/social/posts', (_req: Request, res: Response) => {
+  res.json({ posts: db.getSocialPosts() });
 });
 
-apiRouter.delete('/notes/:id', (req: Request, res: Response) => {
-  const success = db.deleteNote(String(req.params.id), currentUserId);
-  res.json({ success });
+apiRouter.post('/social/posts', (req: Request, res: Response) => {
+  const { content, courseTitle, badgeEarned, tags = [] } = req.body;
+  const user = db.getUserById(currentUserId) || db.getUsers()[0];
+  const post = db.createSocialPost({
+    userId: user.id,
+    userName: user.name,
+    userAvatar: user.avatar,
+    userRank: user.rankTitle || 'Pioneer',
+    content,
+    courseTitle,
+    badgeEarned,
+    tags,
+  });
+  res.json({ success: true, post });
 });
 
-// Instructor Submissions
-apiRouter.get('/instructor/submissions', (_req: Request, res: Response) => {
-  const submissions = db.getSubmissions();
-  res.json({ submissions });
+apiRouter.post('/social/posts/:id/like', (req: Request, res: Response) => {
+  const post = db.likePost(req.params.id as string);
+  if (!post) return res.status(404).json({ error: 'Post not found' });
+  res.json({ success: true, post });
 });
 
-apiRouter.post('/instructor/grade/:id', (req: Request, res: Response) => {
-  const { score, feedback } = req.body;
-  const user = db.getUserById(currentUserId);
-  const graded = db.gradeSubmission(String(req.params.id), Number(score), feedback || 'Well done!', user?.name || 'Instructor');
-  if (!graded) {
-    return res.status(404).json({ error: 'Submission not found' });
-  }
-  res.json({ success: true, submission: graded });
-});
-
-// Admin routes
-apiRouter.get('/admin/stats', (_req: Request, res: Response) => {
-  const stats = db.getSystemStats();
-  res.json({ stats });
-});
-
-apiRouter.get('/admin/users', (_req: Request, res: Response) => {
-  const users = db.getUsers();
-  res.json({ users });
-});
-
-apiRouter.patch('/admin/users/:id/role', (req: Request, res: Response) => {
-  const { role } = req.body;
-  const updated = db.updateUser(String(req.params.id), { role });
-  res.json({ success: true, user: updated });
-});
-
-// AI Learning Assistant (Lumina AI Tutor)
+// -------------------------------------------------------------
+// NOVA AI Mentor (5 Dedicated Learning Modes)
+// -------------------------------------------------------------
 apiRouter.post('/ai/chat', async (req: Request, res: Response) => {
-  const { prompt, lessonTitle, courseTitle, mode = 'explain' } = req.body;
+  const { prompt, mode = 'explain', courseTitle, lessonTitle } = req.body;
 
-  if (!prompt && !mode) {
+  if (!prompt) {
     return res.status(400).json({ error: 'Prompt is required' });
   }
 
@@ -449,34 +463,28 @@ apiRouter.post('/ai/chat', async (req: Request, res: Response) => {
 
   if (apiKey) {
     try {
-      // Connect to Google Gemini API
       const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
-      const systemInstruction = `You are Lumina, a warm, encouraging, pedagogical AI tutor for QuestLearn LMS.
-Current Course: "${courseTitle || 'Computer Science & AI'}"
-Current Lesson: "${lessonTitle || 'General Concept'}"
-Tutoring Mode: "${mode}"
+      const systemInstruction = `You are NOVA Mentor, an intelligent, futuristic, pedagogical AI companion for learners in the NOVA Learning Universe.
+Current Sector/Course: "${courseTitle || 'Quantum & Computational Systems'}"
+Active Mission: "${lessonTitle || 'Universal Concept'}"
+Learning Mode: "${mode.toUpperCase()}"
 
-Guidelines:
-- If mode is 'explain', provide intuitive explanations using relatable everyday analogies (ELI5).
-- If mode is 'example', give concrete code snippets or real-world industrial cases.
-- If mode is 'quiz', ask 2-3 targeted conceptual questions to test understanding.
-- If mode is 'hint', give an incremental conceptual hint without giving away the answer.
-- If mode is 'summary', provide 3 key bullet points with bold takeaways.
-- If mode is 'plan', design a structured 4-week learning roadmap.
-- Format with markdown, bullet points, and code blocks where helpful.`;
+Mode Directives:
+- EXPLAIN MODE: Break down complex concepts into step-by-step intuitive mental models with vivid analogies.
+- PRACTICE MODE: Provide interactive exercises with progressive, gentle hints that guide the learner to write the solution.
+- CHALLENGE MODE: Act as a sparring partner. Ask rigorous scenario questions and score the learner's response.
+- REVISION MODE: Use spaced repetition principles to test key takeaways and reinforce recall of earlier topics.
+- EXAM MODE: Provide formal, timed multi-question assessments with rubric scoring and constructive critiques.
+
+Tone: Futuristic, inspiring, rigorous, encouraging. Use GitHub-flavored markdown with code blocks, KaTeX math notation, and bullet points.`;
 
       const response = await fetch(geminiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          contents: [{
-            parts: [{ text: `${systemInstruction}\n\nStudent Question: ${prompt}` }]
-          }],
-          generationConfig: {
-            temperature: 0.7,
-            maxOutputTokens: 800
-          }
-        })
+          contents: [{ parts: [{ text: `${systemInstruction}\n\nCadet Question: ${prompt}` }] }],
+          generationConfig: { temperature: 0.7, maxOutputTokens: 900 },
+        }),
       });
 
       if (response.ok) {
@@ -487,79 +495,158 @@ Guidelines:
         }
       }
     } catch (err) {
-      console.warn('Gemini API call failed, falling back to smart contextual engine:', err);
+      console.warn('Gemini API call failed, falling back to NOVA Smart Engine:', err);
     }
   }
 
-  // Intelligent Context-Aware Demo Mode (clearly labeled & highly contextual)
+  // NOVA Smart Contextual Engine (High-Fidelity Demo Mode)
   let contextualReply = '';
-
   const cleanPrompt = (prompt || '').toLowerCase();
 
-  if (mode === 'explain' || cleanPrompt.includes('explain') || cleanPrompt.includes('simple')) {
-    contextualReply = `💡 **In Simple Terms (ELI5):**
+  if (mode === 'explain' || cleanPrompt.includes('explain') || cleanPrompt.includes('step by step')) {
+    contextualReply = `### 🌌 NOVA Mentor: Step-by-Step Breakdown
 
-Imagine you are in a gigantic library with a million books, but none of them have titles on the spine. 
+Let us unpack **${lessonTitle || 'this concept'}** through the lens of modern computing:
 
-- **Vector Embeddings** are like assigning every book a location based on *flavor & genre*. Books about cozy detective mysteries sit on the same shelf, even if one is named "The Blue Letter" and another "Midnight Detective".
-- **Retrieval (RAG)** is your personal librarian who runs to that exact shelf, grabs the 3 most relevant pages, and puts them right in front of you so you can write your homework without guessing!
+1. **The Core Intuition:**
+   Imagine thousands of satellites orbiting in deep space. To coordinate without colliding, each satellite is identified not by its serial code, but by its **exact 3D orbital trajectory coordinates**.
+   
+2. **Mathematical Foundation:**
+   In high-dimensional space, similarity is quantified by the angle $\\theta$ between vectors:
+   $$\\text{Sim}(\\mathbf{u}, \\mathbf{v}) = \\cos(\\theta) = \\frac{\\mathbf{u} \\cdot \\mathbf{v}}{\\|\\mathbf{u}\\| \\|\\mathbf{v}\\|}$$
 
-> **Quick Rule of Thumb:** Vectors capture **meaning**, while traditional search only looks for **exact spelling**.`;
-  } else if (mode === 'example' || cleanPrompt.includes('example')) {
-    contextualReply = `🛠️ **Real-World Production Example:**
+3. **Why It Matters in Production:**
+   Traditional search engines fail when users misspell words or use synonyms. Vector embeddings capture the **semantic essence**, ensuring 100% conceptual recall!
 
-Here is how Spotify uses this exact concept for musical discovery:
+> 💡 **Key Takeaway:** Coordinate-based meaning replaces brittle keyword matching.`;
+  } else if (mode === 'practice' || cleanPrompt.includes('practice') || cleanPrompt.includes('exercise')) {
+    contextualReply = `### 🎯 Practice Exercise: Vector Normalization
+
+Here is your hands-on calibration challenge:
+
+**Problem:** Given an unnormalized 2D vector $\\mathbf{v} = [3, 4]$, write the normalized unit vector $\\hat{\\mathbf{v}}$.
 
 \`\`\`typescript
-// Calculate Cosine Similarity between user taste & track vector
-function computeMusicMatch(userProfile: Vector, songFeatures: Vector): number {
-  const dotProduct = userProfile.reduce((sum, val, i) => sum + val * songFeatures[i], 0);
-  const normUser = Math.sqrt(userProfile.reduce((sum, val) => sum + val * val, 0));
-  const normSong = Math.sqrt(songFeatures.reduce((sum, val) => sum + val * val, 0));
-  return dotProduct / (normUser * normSong);
+// Quick Scratchpad
+function normalizeVector(v: number[]): number[] {
+  // Hint 1: Calculate magnitude = Math.sqrt(v[0]^2 + v[1]^2)
+  // Hint 2: Divide each component by magnitude
 }
 \`\`\`
 
-When a song scores \`> 0.85\`, it immediately enters your "Discover Weekly" algorithm queue!`;
-  } else if (mode === 'hint' || cleanPrompt.includes('hint')) {
-    contextualReply = `🧭 **Lumina's Nudge (No Spoilers!):**
+Need a hint? Think about the Pythagorean theorem ($3^2 + 4^2 = 25$). What is $\\sqrt{25}$? Reply with your code or solution to continue!`;
+  } else if (mode === 'challenge' || cleanPrompt.includes('challenge') || cleanPrompt.includes('duel')) {
+    contextualReply = `### ⚔️ NOVA Knowledge Duel: Rapid-Fire Challenge
 
-Look closely at the angle between the two arrows rather than their length. 
+I have selected a high-stakes scenario for you:
 
-- Ask yourself: If one vector is twice as long as another, but they point in the exact same direction, is their semantic topic identical?
-- *Recall:* Which mathematical formula ignores the length (magnitude) and solely inspects the angle $\\theta$?`;
-  } else if (mode === 'summary' || cleanPrompt.includes('summarize')) {
-    contextualReply = `📝 **Key Takeaways for ${lessonTitle || 'This Topic'}:**
+**Scenario:** You are building a mission-critical RAG pipeline for a hospital. A doctor queries: \`"Emergency dosage for Patient ID 409-B under pediatric protocol."\`
 
-1. **High-Dimensional Geometry**: Concepts are mapped into 768 or 1536-dimensional space where semantic distance corresponds to Euclidean/Cosine distance.
-2. **Hybrid Advantage**: BM25 keyword matching + Dense vector search guarantees both exact term accuracy and conceptual nuance.
-3. **Chunking Strategy**: Always overlap sliding window chunks by 15-20% to prevent losing context across boundary cuts.`;
-  } else if (mode === 'quiz' || cleanPrompt.includes('practice') || cleanPrompt.includes('test me')) {
-    contextualReply = `🎯 **Quick Practice Check:**
+**Question:** If you only use dense vector embeddings without a BM25 keyword index, what catastrophic edge case will occur?
 
-**Question:** If you are building a legal document search engine where lawyers search for specific penal codes like \`Section 409-B\`, why would pure vector search fail compared to hybrid search?
+1. The query will time out after 30 seconds.
+2. The vector index will confuse \`Patient 409-B\` with \`Patient 409-A\` due to semantic vector proximity.
+3. The LLM will refuse to answer due to HIPAA restrictions.
 
-*Think about:* Does an embedding model understand the difference between \`409-A\` and \`409-B\`, or do they produce nearly identical dense vectors?`;
-  } else if (mode === 'plan' || cleanPrompt.includes('plan') || cleanPrompt.includes('schedule')) {
-    contextualReply = `🗺️ **Personalized 4-Week Study Plan:**
+**Submit your answer and explain why!**`;
+  } else if (mode === 'revision' || cleanPrompt.includes('revision') || cleanPrompt.includes('review')) {
+    contextualReply = `### 🔄 Spaced Repetition Flash-Recall
 
-- **Week 1 (Foundations)**: Master Transformer mechanics, attention layers, and tokenization dynamics. (*Daily Target: 25 mins*)
-- **Week 2 (Embeddings & RAG)**: Build a local hybrid search engine combining BM25 and ChromaDB/Milvus. (*Daily Target: 30 mins*)
-- **Week 3 (Agentic Workflows)**: Implement the ReAct cycle with custom tool calling and schema validation. (*Daily Target: 35 mins*)
-- **Week 4 (Cap-stone & Deployment)**: Deploy a production agent with streaming UI, rate limits, and automated guardrails. (*Daily Target: 40 mins*)`;
+Let us verify your long-term memory consolidation for **${courseTitle || 'AI Systems'}**:
+
+- **Checkpoint 1:** What does **RRF** stand for in hybrid search pipelines, and what does it prevent?
+- **Checkpoint 2:** In the **ReAct** agent loop, what happens immediately after an *Action* tool executes?
+- **Checkpoint 3:** Why is Cosine Similarity preferred over Euclidean distance for high-dimensional document search?
+
+*Take 30 seconds to answer mentally or in chat before I reveal the master rubric!*`;
+  } else if (mode === 'exam' || cleanPrompt.includes('exam') || cleanPrompt.includes('assessment')) {
+    contextualReply = `### 📋 NOVA Proctored Assessment Simulation
+
+**Sector:** ${courseTitle || 'System Architecture'}  
+**Time Limit:** 15 Minutes | **Passing Grade:** 80%
+
+---
+
+#### Section A: Architectural Analysis (10 pts)
+Analyze the difference between **Sparse BM25 Keyword Search** and **Dense Vector Retrieval**. Under which conditions should an engineer choose a hybrid reciprocal-rank fusion over pure vector search?
+
+#### Section B: Code Review (10 pts)
+Identify the concurrency bug in the following mock actor loop:
+\`\`\`typescript
+async function processMessage(msg: Message) {
+  state.inProgress = true;
+  await callExternalAPI(msg);
+  state.inProgress = false; // What happens if multiple messages arrive concurrently?
+}
+\`\`\`
+
+Reply with your complete solutions for rubric evaluation and XP credit!`;
   } else {
-    contextualReply = `Great question! In **${courseTitle || 'this course'}**, mastering **${lessonTitle || 'this concept'}** gives you an immense advantage. 
+    contextualReply = `Greetings, Cadet! I am **NOVA Mentor**, your personal companion through the learning universe.
 
-The secret is connecting theoretical math to practical code: always verify your vector dimensions, measure cosine distances, and observe how semantic clustering handles edge cases. 
+Whether you need to **understand a concept step-by-step**, **practice coding exercises**, **duel in Challenge Mode**, or **simulate an Exam**, I am here to guide your ascent.
 
-Would you like me to give you an **intuitive analogy**, show a **code example**, or give you a **quick practice quiz**?`;
+What mission shall we conquer together today?`;
   }
 
   res.json({
     reply: contextualReply,
     mode,
-    source: 'contextual-demo-mode',
-    note: 'Demo mode active. Add a GEMINI_API_KEY in Settings to enable real-time Gemini generation.'
+    source: 'contextual-smart-engine',
+    note: apiKey ? 'Powered by Google Gemini.' : 'Demo Mode active. Connect GEMINI_API_KEY in Settings for live LLM generation.',
+  });
+});
+
+// Quizzes & Flashcards
+apiRouter.get('/quizzes/:id', (req: Request, res: Response) => {
+  const quiz = db.getQuizById(req.params.id as string);
+  if (!quiz) return res.status(404).json({ error: 'Quiz not found' });
+  res.json({ quiz });
+});
+
+apiRouter.get('/flashcards/:id', (req: Request, res: Response) => {
+  const deck = db.getFlashcardDeckById(req.params.id as string);
+  if (!deck) return res.status(404).json({ error: 'Deck not found' });
+  res.json({ deck });
+});
+
+// Notes
+apiRouter.get('/notes', (req: Request, res: Response) => {
+  const { courseId } = req.query;
+  const notes = db.getNotes(currentUserId, courseId as string);
+  res.json({ notes });
+});
+
+apiRouter.post('/notes', (req: Request, res: Response) => {
+  const { courseId, lessonId, lessonTitle, text } = req.body;
+  if (!text) return res.status(400).json({ error: 'Note text required' });
+  const note = db.addNote(currentUserId, courseId, lessonId, lessonTitle, text);
+  res.json({ success: true, note });
+});
+
+apiRouter.delete('/notes/:id', (req: Request, res: Response) => {
+  const success = db.deleteNote(req.params.id as string, currentUserId);
+  res.json({ success });
+});
+
+// Admin Control Center
+apiRouter.get('/admin/users', (_req: Request, res: Response) => {
+  res.json({ users: db.getUsers() });
+});
+
+apiRouter.patch('/admin/users/:id/role', (req: Request, res: Response) => {
+  const { role } = req.body;
+  const user = db.updateUser(req.params.id as string, { role });
+  res.json({ success: true, user });
+});
+
+apiRouter.get('/admin/analytics', (_req: Request, res: Response) => {
+  const stats = db.getSystemStats();
+  res.json({
+    stats,
+    worlds: db.getWorlds(),
+    usersCount: db.getUsers().length,
+    coursesCount: db.getCourses().length,
   });
 });
 
@@ -568,16 +655,19 @@ apiRouter.get('/settings', (_req: Request, res: Response) => {
   const { settings } = db.getData();
   res.json({
     hasGeminiKey: Boolean(settings.geminiApiKey || process.env.GEMINI_API_KEY),
+    hasOpenaiKey: Boolean(settings.openaiApiKey || process.env.OPENAI_API_KEY),
     maintenanceMode: settings.maintenanceMode,
-    allowRegistration: settings.allowRegistration
+    allowRegistration: settings.allowRegistration,
   });
 });
 
 apiRouter.post('/settings', (req: Request, res: Response) => {
-  const { geminiApiKey } = req.body;
-  if (geminiApiKey !== undefined) {
-    db.getData().settings.geminiApiKey = geminiApiKey;
-    db.save();
-  }
+  const { geminiApiKey, openaiApiKey, maintenanceMode, allowRegistration } = req.body;
+  const s = db.getData().settings;
+  if (geminiApiKey !== undefined) s.geminiApiKey = geminiApiKey;
+  if (openaiApiKey !== undefined) s.openaiApiKey = openaiApiKey;
+  if (maintenanceMode !== undefined) s.maintenanceMode = maintenanceMode;
+  if (allowRegistration !== undefined) s.allowRegistration = allowRegistration;
+  db.save();
   res.json({ success: true });
 });

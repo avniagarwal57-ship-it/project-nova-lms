@@ -213,20 +213,20 @@ export const CourseDetailsPage: React.FC<CourseDetailsPageProps> = ({
                     const nextLessonId = enrollment.lastLessonId || allLessons[0].id;
                     onStartLesson(course.id, nextLessonId);
                   }}
-                  className="w-full py-3.5 rounded-xl font-extrabold text-white bg-indigo-600 hover:bg-indigo-500 shadow-lg shadow-indigo-600/30 transition-all flex items-center justify-center gap-2"
+                  className="w-full py-3.5 rounded-xl font-extrabold text-slate-950 bg-gradient-to-r from-cyan-400 to-sky-300 hover:from-cyan-300 hover:to-sky-200 shadow-lg shadow-cyan-400/30 transition-all flex items-center justify-center gap-2"
                 >
-                  <PlayCircle className="w-5 h-5" />
-                  <span>Resume Course</span>
+                  <PlayCircle className="w-5 h-5 fill-slate-950 text-slate-950" />
+                  <span>Launch Active Mission</span>
                 </button>
               </div>
             ) : (
               <button
                 onClick={handleEnroll}
                 disabled={enrolling}
-                className="w-full py-3.5 rounded-xl font-extrabold text-slate-950 bg-gradient-to-r from-amber-400 to-amber-500 hover:opacity-95 shadow-lg shadow-amber-500/25 transition-all flex items-center justify-center gap-2 mt-2"
+                className="w-full py-3.5 rounded-xl font-extrabold text-slate-950 bg-gradient-to-r from-cyan-400 to-sky-300 hover:from-cyan-300 hover:to-sky-200 shadow-lg shadow-cyan-400/30 transition-all flex items-center justify-center gap-2 mt-2"
               >
                 <Sparkles className="w-5 h-5" />
-                <span>{enrolling ? 'Enrolling...' : 'Enroll Free & Start Learning'}</span>
+                <span>{enrolling ? 'Calibrating...' : 'Begin Quest Expedition'}</span>
               </button>
             )}
           </div>

@@ -12,6 +12,11 @@ import {
   Code,
   ShieldAlert,
   Info,
+  CheckCircle2,
+  Copy,
+  Check,
+  Award,
+  Terminal,
 } from 'lucide-react';
 import { playXpSound } from '../utils/sound';
 
@@ -19,24 +24,33 @@ interface Message {
   role: 'user' | 'assistant';
   text: string;
   source?: string;
+  mode?: string;
 }
 
 export const AiTutorPage: React.FC = () => {
   const { user, soundEnabled } = useAuth();
+  const [selectedMode, setSelectedMode] = useState<'explain' | 'practice' | 'challenge' | 'revision' | 'exam'>('explain');
   const [messages, setMessages] = useState<Message[]>([
     {
       role: 'assistant',
-      text: `Hello ${user?.name.split(' ')[0] || 'friend'}! I'm **Lumina**, your personal AI Learning Assistant on QuestLearn.
+      text: `Greetings Commander ${user?.name.split(' ')[0] || 'Cadet'}! I am **NOVA Mentor**, your personal learning companion across the universe.
 
-I'm here to help you master challenging topics, break down complex concepts into simple intuition, generate practice problems, or architect a personalized study schedule.
+I feature **5 dedicated intelligence modes**:
+- 💡 **Explain Mode:** Understand any topic step-by-step with vivid analogies.
+- 🎯 **Practice Mode:** Interactive exercises with guided, progressive hints.
+- ⚔️ **Challenge Mode:** Real-time knowledge duel against me to test your limits.
+- 🔄 **Revision Mode:** Spaced-repetition recall of earlier missions and formulas.
+- 📋 **Exam Mode:** Proctored timed simulation with rubric scoring.
 
-Try one of the guided prompts below or ask me any question!`,
-      source: 'contextual-demo-mode',
+Select a mode above or ask me anything to begin!`,
+      source: 'smart-engine',
+      mode: 'explain',
     },
   ]);
   const [prompt, setPrompt] = useState('');
   const [loading, setLoading] = useState(false);
   const [isLiveGemini, setIsLiveGemini] = useState(false);
+  const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -59,10 +73,12 @@ Try one of the guided prompts below or ask me any question!`,
     }
   };
 
-  const handleSend = async (userPrompt: string, mode: string = 'general') => {
-    if (!userPrompt.trim()) return;
+  const handleSend = async (userPrompt?: string, modeOverride?: string) => {
+    const textToSend = userPrompt || prompt;
+    if (!textToSend.trim()) return;
 
-    const newMsg: Message = { role: 'user', text: userPrompt };
+    const mode = (modeOverride || selectedMode) as any;
+    const newMsg: Message = { role: 'user', text: textToSend, mode };
     setMessages(prev => [...prev, newMsg]);
     setPrompt('');
     setLoading(true);
@@ -72,9 +88,9 @@ Try one of the guided prompts below or ask me any question!`,
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          prompt: userPrompt,
+          prompt: textToSend,
           mode,
-          courseTitle: 'Full-Stack AI Engineering & Systems Design',
+          courseTitle: 'Full-Stack AI Engineering & Distributed Systems',
         }),
       });
 
@@ -83,7 +99,7 @@ Try one of the guided prompts below or ask me any question!`,
         playXpSound(soundEnabled);
         setMessages(prev => [
           ...prev,
-          { role: 'assistant', text: data.reply, source: data.source },
+          { role: 'assistant', text: data.reply, source: data.source, mode: data.mode },
         ]);
         if (data.source === 'gemini-live') {
           setIsLiveGemini(true);
@@ -94,7 +110,7 @@ Try one of the guided prompts below or ask me any question!`,
         ...prev,
         {
           role: 'assistant',
-          text: 'Encountered a connection error. Please try again!',
+          text: 'Encountered a celestial transmission error. Please re-send your query!',
         },
       ]);
     } finally {
@@ -102,156 +118,187 @@ Try one of the guided prompts below or ask me any question!`,
     }
   };
 
+  const handleCopy = (text: string, idx: number) => {
+    navigator.clipboard.writeText(text);
+    setCopiedIdx(idx);
+    setTimeout(() => setCopiedIdx(null), 2000);
+  };
+
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6 animate-fadeIn">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 rounded-3xl bg-gradient-to-r from-purple-900/40 via-indigo-900/40 to-slate-900/50 border border-purple-500/30 backdrop-blur-md">
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6 animate-fadeIn">
+      {/* Top Banner & Status Indicator */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 sm:p-8 rounded-3xl bg-gradient-to-r from-violet-950/70 via-slate-900 to-indigo-950/70 border border-violet-500/30 backdrop-blur-xl shadow-xl">
         <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-pink-500 to-purple-600 flex items-center justify-center text-white shadow-lg shadow-pink-500/30">
-            <Bot className="w-6 h-6" />
+          <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-violet-600 to-indigo-600 text-white flex items-center justify-center shadow-lg shadow-violet-500/30 shrink-0">
+            <Bot className="w-8 h-8" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white">
-                Lumina AI Learning Assistant
+              <h1 className="text-2xl sm:text-3xl font-extrabold text-white">
+                NOVA AI Mentor
               </h1>
-              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                isLiveGemini
-                  ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                  : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
-              }`}>
-                {isLiveGemini ? '● Live Gemini Active' : '● Demo Tutor Mode'}
+              <span className="px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase bg-violet-500/20 text-violet-300 border border-violet-500/30">
+                Cognitive Companion
               </span>
             </div>
-            <p className="text-xs text-slate-400 mt-0.5">
-              Trained on modern AI architectures, software engineering, and design systems.
+            <p className="text-xs text-slate-300 mt-1 max-w-lg">
+              Intelligent multi-mode tutor adapting explanations, generating practice challenges, and identifying knowledge gaps.
             </p>
           </div>
         </div>
 
-        {!isLiveGemini && (
-          <div className="text-[11px] text-amber-300 bg-amber-500/10 border border-amber-500/20 px-3 py-1.5 rounded-xl max-w-xs">
-            💡 Using intelligent context simulation. Add a Google Gemini API key in <strong>Settings</strong> to connect live AI!
-          </div>
-        )}
+        {/* Engine Status Pill */}
+        <div className="shrink-0">
+          {isLiveGemini ? (
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-bold shadow-sm">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping inline-block" />
+              <span>Gemini Live Engine Active</span>
+            </div>
+          ) : (
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 text-xs font-bold shadow-sm" title="Configure GEMINI_API_KEY in Settings for live LLM API">
+              <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+              <span>Smart Context Engine (Demo Mode)</span>
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Suggested Quick Prompt Pills */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-        <button
-          onClick={() => handleSend('Explain vector embeddings in simple everyday terms (ELI5)', 'explain')}
-          className="p-3 rounded-2xl bg-white dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700/60 hover:border-indigo-500 text-left text-xs font-semibold text-slate-700 dark:text-slate-200 shadow-sm transition-all flex items-center gap-2 group"
-        >
-          <Sparkles className="w-4 h-4 text-amber-500 shrink-0 group-hover:scale-110 transition-transform" />
-          <span>Explain like I'm 5</span>
-        </button>
-
-        <button
-          onClick={() => handleSend('Show me a real-world code example of cosine similarity with Spotify music matching', 'example')}
-          className="p-3 rounded-2xl bg-white dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700/60 hover:border-purple-500 text-left text-xs font-semibold text-slate-700 dark:text-slate-200 shadow-sm transition-all flex items-center gap-2 group"
-        >
-          <Code className="w-4 h-4 text-purple-500 shrink-0 group-hover:scale-110 transition-transform" />
-          <span>Production Code Example</span>
-        </button>
-
-        <button
-          onClick={() => handleSend('Generate 3 quick practice questions to test my RAG & Vector understanding', 'quiz')}
-          className="p-3 rounded-2xl bg-white dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700/60 hover:border-pink-500 text-left text-xs font-semibold text-slate-700 dark:text-slate-200 shadow-sm transition-all flex items-center gap-2 group"
-        >
-          <HelpCircle className="w-4 h-4 text-pink-500 shrink-0 group-hover:scale-110 transition-transform" />
-          <span>Generate Practice Quiz</span>
-        </button>
-
-        <button
-          onClick={() => handleSend('Create a structured 4-week learning roadmap for transitioning into an AI Systems Architect', 'plan')}
-          className="p-3 rounded-2xl bg-white dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700/60 hover:border-indigo-500 text-left text-xs font-semibold text-slate-700 dark:text-slate-200 shadow-sm transition-all flex items-center gap-2 group"
-        >
-          <Calendar className="w-4 h-4 text-indigo-500 shrink-0 group-hover:scale-110 transition-transform" />
-          <span>4-Week Custom Study Plan</span>
-        </button>
-
-        <button
-          onClick={() => handleSend('Summarize the top 3 architectural trade-offs between dense vector search vs keyword search', 'summary')}
-          className="p-3 rounded-2xl bg-white dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700/60 hover:border-emerald-500 text-left text-xs font-semibold text-slate-700 dark:text-slate-200 shadow-sm transition-all flex items-center gap-2 group"
-        >
-          <BookOpen className="w-4 h-4 text-emerald-500 shrink-0 group-hover:scale-110 transition-transform" />
-          <span>Key Trade-Offs Summary</span>
-        </button>
-
-        <button
-          onClick={() => handleSend('What are common weak spots developers have when designing autonomous agents?', 'general')}
-          className="p-3 rounded-2xl bg-white dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700/60 hover:border-rose-500 text-left text-xs font-semibold text-slate-700 dark:text-slate-200 shadow-sm transition-all flex items-center gap-2 group"
-        >
-          <ShieldAlert className="w-4 h-4 text-rose-500 shrink-0 group-hover:scale-110 transition-transform" />
-          <span>Identify Weak Spots</span>
-        </button>
+      {/* 5 Learning Modes Selector Tabs */}
+      <div className="p-2 rounded-2xl bg-slate-900/90 border border-slate-800 backdrop-blur-md grid grid-cols-2 sm:grid-cols-5 gap-2">
+        {[
+          { id: 'explain', label: 'Explain Mode', icon: '💡', desc: 'Step-by-step breakdown' },
+          { id: 'practice', label: 'Practice Mode', icon: '🎯', desc: 'Exercises with hints' },
+          { id: 'challenge', label: 'Challenge Mode', icon: '⚔️', desc: 'Knowledge duel' },
+          { id: 'revision', label: 'Revision Mode', icon: '🔄', desc: 'Spaced repetition' },
+          { id: 'exam', label: 'Exam Mode', icon: '📋', desc: 'Simulated assessment' },
+        ].map(mode => (
+          <button
+            key={mode.id}
+            onClick={() => setSelectedMode(mode.id as any)}
+            className={`p-3 rounded-xl text-left transition-all ${
+              selectedMode === mode.id
+                ? 'bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-lg shadow-violet-600/30 scale-[1.02]'
+                : 'bg-slate-800/50 hover:bg-slate-800 text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <div className="flex items-center gap-1.5 text-xs font-extrabold mb-0.5">
+              <span>{mode.icon}</span>
+              <span>{mode.label}</span>
+            </div>
+            <div className="text-[10px] opacity-80 truncate">{mode.desc}</div>
+          </button>
+        ))}
       </div>
 
-      {/* Chat Messages Container */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-xl min-h-[440px] flex flex-col justify-between space-y-4">
-        <div className="space-y-4 overflow-y-auto max-h-[500px] pr-2">
-          {messages.map((m, idx) => (
+      {/* Chat Messages Log */}
+      <div className="p-6 rounded-3xl bg-slate-900/80 border border-slate-800 shadow-xl min-h-[440px] max-h-[560px] overflow-y-auto space-y-4">
+        {messages.map((msg, index) => {
+          const isUser = msg.role === 'user';
+          return (
             <div
-              key={idx}
-              className={`flex gap-3 ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}
+              key={index}
+              className={`flex gap-3.5 ${isUser ? 'justify-end' : 'justify-start'}`}
             >
-              {m.role === 'assistant' && (
-                <div className="w-8 h-8 rounded-xl bg-pink-500 text-white flex items-center justify-center shrink-0 shadow-md">
+              {!isUser && (
+                <div className="w-8 h-8 rounded-xl bg-violet-600/20 text-violet-400 flex items-center justify-center shrink-0 border border-violet-500/30">
                   <Bot className="w-4 h-4" />
                 </div>
               )}
 
               <div
-                className={`max-w-[85%] sm:max-w-[75%] p-4 rounded-2xl text-xs sm:text-sm leading-relaxed shadow-sm ${
-                  m.role === 'user'
-                    ? 'bg-indigo-600 text-white rounded-tr-none'
-                    : 'bg-slate-100 dark:bg-slate-800/80 text-slate-800 dark:text-slate-200 rounded-tl-none border border-slate-200 dark:border-slate-700/60'
+                className={`max-w-[85%] sm:max-w-[75%] p-4 rounded-2xl text-xs sm:text-sm leading-relaxed space-y-2 relative group ${
+                  isUser
+                    ? 'bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-md'
+                    : 'bg-slate-800/90 border border-slate-700/80 text-slate-200 shadow-md'
                 }`}
               >
-                <div className="whitespace-pre-line">{m.text}</div>
-                {m.source && (
-                  <div className="mt-2 pt-2 border-t border-slate-200/40 dark:border-slate-700/40 text-[10px] text-slate-400">
-                    Source: {m.source === 'gemini-live' ? 'Live Gemini 1.5 Flash' : 'QuestLearn Contextual Knowledge Engine'}
+                {!isUser && (
+                  <div className="flex items-center justify-between pb-1 mb-1 border-b border-slate-700/50 text-[10px] text-slate-400 font-mono">
+                    <span className="uppercase font-bold text-violet-400">
+                      NOVA Mentor • {msg.mode?.toUpperCase() || 'ASSISTANT'}
+                    </span>
+                    <button
+                      onClick={() => handleCopy(msg.text, index)}
+                      className="p-1 hover:text-white"
+                      title="Copy response"
+                    >
+                      {copiedIdx === index ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                    </button>
                   </div>
                 )}
-              </div>
-            </div>
-          ))}
 
-          {loading && (
-            <div className="flex gap-3 items-center text-xs text-slate-400 italic">
-              <div className="w-8 h-8 rounded-xl bg-pink-500 text-white flex items-center justify-center shrink-0">
-                <Bot className="w-4 h-4" />
+                <div className="whitespace-pre-line prose prose-invert max-w-none text-xs sm:text-sm">
+                  {msg.text}
+                </div>
               </div>
-              <span>Lumina is researching and formatting your answer...</span>
-            </div>
-          )}
-          <div ref={messagesEndRef} />
-        </div>
 
-        {/* Chat Input Bar */}
-        <form
-          onSubmit={e => {
-            e.preventDefault();
-            handleSend(prompt);
-          }}
-          className="flex items-center gap-3 pt-3 border-t border-slate-200 dark:border-slate-800"
-        >
-          <input
-            type="text"
-            value={prompt}
-            onChange={e => setPrompt(e.target.value)}
-            placeholder="Ask Lumina anything about programming, AI, design, or your study routine..."
-            className="flex-1 px-4 py-3 rounded-2xl bg-slate-50 dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-pink-500 shadow-sm"
-          />
+              {isUser && (
+                <img
+                  src={user?.avatar}
+                  alt={user?.name}
+                  className="w-8 h-8 rounded-xl object-cover ring-2 ring-violet-500/40 shrink-0"
+                />
+              )}
+            </div>
+          );
+        })}
+
+        {loading && (
+          <div className="flex gap-3 justify-start items-center">
+            <div className="w-8 h-8 rounded-xl bg-violet-600/20 text-violet-400 flex items-center justify-center shrink-0 border border-violet-500/30">
+              <Bot className="w-4 h-4" />
+            </div>
+            <div className="p-3.5 rounded-2xl bg-slate-800/80 border border-slate-700 text-slate-400 text-xs italic flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-violet-400 animate-ping" />
+              <span>NOVA Mentor is processing coordinates and formulating explanation...</span>
+            </div>
+          </div>
+        )}
+
+        <div ref={messagesEndRef} />
+      </div>
+
+      {/* Quick Capability Prompt Chips */}
+      <div className="flex gap-2 overflow-x-auto pb-1 text-xs">
+        {[
+          { label: '💡 Explain Vector Embeddings with an analogy', mode: 'explain' },
+          { label: '🎯 Practice: Give me an interactive challenge with hints', mode: 'practice' },
+          { label: '⚔️ Challenge me with an architectural knowledge duel', mode: 'challenge' },
+          { label: '🔄 Revision: Test my retention of earlier concepts', mode: 'revision' },
+          { label: '📋 Start a 15-minute simulated exam assessment', mode: 'exam' },
+        ].map((chip, idx) => (
           <button
-            type="submit"
-            disabled={loading || !prompt.trim()}
-            className="p-3.5 rounded-2xl bg-gradient-to-r from-pink-600 to-purple-600 hover:opacity-95 text-white disabled:opacity-50 shadow-md transition-all shrink-0"
+            key={idx}
+            onClick={() => handleSend(chip.label, chip.mode)}
+            className="px-3.5 py-1.5 rounded-xl bg-slate-900 border border-slate-800 hover:border-violet-500/50 text-slate-300 hover:text-white shrink-0 text-[11px] font-semibold transition-all"
           >
-            <Send className="w-4 h-4" />
+            {chip.label}
           </button>
-        </form>
+        ))}
+      </div>
+
+      {/* Input Bar */}
+      <div className="flex gap-3 p-2 rounded-2xl bg-slate-900/90 border border-slate-800 shadow-xl backdrop-blur-md">
+        <input
+          type="text"
+          value={prompt}
+          onChange={e => setPrompt(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && handleSend()}
+          placeholder={`Ask NOVA Mentor in ${selectedMode.toUpperCase()} mode...`}
+          className="flex-1 px-4 py-3 bg-transparent text-sm text-white placeholder-slate-500 focus:outline-none"
+        />
+        <button
+          onClick={() => handleSend()}
+          disabled={loading || !prompt.trim()}
+          className={`px-6 py-3 rounded-xl font-extrabold text-white text-xs flex items-center gap-2 transition-all ${
+            loading || !prompt.trim()
+              ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
+              : 'bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 shadow-lg shadow-violet-600/30 hover:scale-105'
+          }`}
+        >
+          <Send className="w-4 h-4" />
+          <span>Transmit</span>
+        </button>
       </div>
     </div>
   );

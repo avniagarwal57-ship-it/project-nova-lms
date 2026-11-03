@@ -11,8 +11,8 @@ import {
   GraduationCap,
   Sparkles,
   Menu,
-  X,
-  Award,
+  Compass,
+  Trophy,
   BookOpen,
 } from 'lucide-react';
 
@@ -43,16 +43,16 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar, activeTab, setA
             onClick={() => setActiveTab('landing')}
             className="flex items-center gap-2.5 text-left group"
           >
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 via-purple-600 to-pink-500 flex items-center justify-center text-white shadow-md shadow-indigo-500/25 group-hover:scale-105 transition-transform">
-              <Sparkles className="w-5 h-5" />
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-cyan-500 via-indigo-600 to-violet-500 flex items-center justify-center text-white shadow-lg shadow-cyan-500/25 group-hover:scale-105 transition-transform">
+              <Sparkles className="w-5 h-5 text-white" />
             </div>
             <div>
-              <div className="flex items-center gap-1.5">
-                <span className="font-extrabold text-lg tracking-tight text-slate-900 dark:text-white">
-                  Quest<span className="text-indigo-600 dark:text-indigo-400">Learn</span>
+              <div className="flex items-center gap-2">
+                <span className="font-extrabold text-xl tracking-tight text-slate-900 dark:text-white">
+                  NOVA<span className="text-cyan-500 dark:text-cyan-400">.</span>
                 </span>
-                <span className="hidden sm:inline-block px-1.5 py-0.5 text-[10px] font-bold uppercase rounded bg-indigo-100 dark:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300">
-                  Gamified
+                <span className="hidden sm:inline-block px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-widest rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-600 dark:text-cyan-400">
+                  Universe
                 </span>
               </div>
             </div>
@@ -61,10 +61,10 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar, activeTab, setA
 
         {/* Center: Live Gamification Stats Bar */}
         {user && (
-          <div className="hidden sm:flex items-center gap-2.5">
+          <div className="hidden sm:flex items-center gap-3">
             {/* Streak Counter */}
-            <div 
-              title="Current Daily Learning Streak! Complete 1 lesson today to keep your flame alive."
+            <div
+              title="Current Daily Learning Streak! Keep the celestial flame burning."
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-orange-500/10 to-amber-500/10 border border-orange-500/30 text-orange-600 dark:text-orange-400 text-xs font-bold shadow-sm"
             >
               <Flame className="w-4 h-4 fill-orange-500 text-orange-500 animate-pulse-subtle" />
@@ -72,8 +72,8 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar, activeTab, setA
             </div>
 
             {/* Total XP Counter */}
-            <div 
-              title="Total Experience Points earned through lessons, quizzes, and missions."
+            <div
+              title="Total Experience Points earned through quests, coding sandboxes, and challenges."
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-600 dark:text-amber-400 text-xs font-bold shadow-sm"
             >
               <Zap className="w-4 h-4 fill-amber-500 text-amber-500" />
@@ -81,12 +81,12 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar, activeTab, setA
             </div>
 
             {/* Level Indicator */}
-            <div 
-              title={`Level ${user.level} Scholar. Earn ${user.level * 300 - user.xp > 0 ? user.level * 300 - user.xp : 60} XP to advance.`}
+            <div
+              title={`Level ${user.level} ${user.rankTitle || 'Cadet'}.`}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-indigo-500/10 border border-indigo-500/30 text-indigo-600 dark:text-indigo-400 text-xs font-bold shadow-sm"
             >
-              <Award className="w-4 h-4 text-indigo-500" />
-              <span>LVL {user.level}</span>
+              <Compass className="w-4 h-4 text-indigo-500" />
+              <span>LVL {user.level} • {user.rankTitle || 'Cadet'}</span>
             </div>
           </div>
         )}
@@ -105,14 +105,14 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar, activeTab, setA
               ) : user?.role === 'instructor' ? (
                 <BookOpen className="w-3.5 h-3.5 text-purple-500" />
               ) : (
-                <GraduationCap className="w-3.5 h-3.5 text-indigo-500" />
+                <GraduationCap className="w-3.5 h-3.5 text-cyan-500" />
               )}
               <span className="capitalize hidden md:inline">{user?.role || 'Role'}</span>
               <span className="text-[10px] text-slate-400">▾</span>
             </button>
 
             {roleMenuOpen && (
-              <div className="absolute right-0 mt-2 w-48 py-1.5 bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 z-50 text-xs animate-fadeIn">
+              <div className="absolute right-0 mt-2 w-52 py-1.5 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 z-50 text-xs animate-fadeIn">
                 <div className="px-3 py-1 text-[10px] font-bold uppercase text-slate-400 tracking-wider">
                   Switch Active Persona
                 </div>
@@ -122,14 +122,14 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar, activeTab, setA
                     setRoleMenuOpen(false);
                     setActiveTab('dashboard');
                   }}
-                  className={`w-full px-3 py-2 text-left flex items-center gap-2 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 ${
-                    user?.role === 'learner' ? 'text-indigo-600 dark:text-indigo-400 font-bold' : 'text-slate-700 dark:text-slate-300'
+                  className={`w-full px-3 py-2 text-left flex items-center gap-2 hover:bg-cyan-50 dark:hover:bg-cyan-950/40 ${
+                    user?.role === 'learner' ? 'text-cyan-600 dark:text-cyan-400 font-bold' : 'text-slate-700 dark:text-slate-300'
                   }`}
                 >
-                  <GraduationCap className="w-4 h-4 text-indigo-500" />
+                  <GraduationCap className="w-4 h-4 text-cyan-500" />
                   <div>
                     <div>Alex Rivers</div>
-                    <div className="text-[10px] text-slate-400 font-normal">Learner Persona</div>
+                    <div className="text-[10px] text-slate-400 font-normal">Learner / Void Navigator</div>
                   </div>
                 </button>
                 <button
@@ -145,7 +145,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar, activeTab, setA
                   <BookOpen className="w-4 h-4 text-purple-500" />
                   <div>
                     <div>Dr. Sarah Chen</div>
-                    <div className="text-[10px] text-slate-400 font-normal">Instructor Persona</div>
+                    <div className="text-[10px] text-slate-400 font-normal">Instructor / World Architect</div>
                   </div>
                 </button>
                 <button
@@ -161,7 +161,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar, activeTab, setA
                   <Shield className="w-4 h-4 text-rose-500" />
                   <div>
                     <div>Marcus Vance</div>
-                    <div className="text-[10px] text-slate-400 font-normal">Admin Persona</div>
+                    <div className="text-[10px] text-slate-400 font-normal">NOVA Overseer & Admin</div>
                   </div>
                 </button>
               </div>
@@ -173,9 +173,9 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar, activeTab, setA
             onClick={toggleSound}
             aria-label={soundEnabled ? 'Mute game sound effects' : 'Enable game sound effects'}
             className="p-2 rounded-xl text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-            title={soundEnabled ? 'Mute sound effects' : 'Enable sound effects'}
+            title={soundEnabled ? 'Mute audio cues' : 'Enable audio cues'}
           >
-            {soundEnabled ? <Volume2 className="w-4 h-4 text-indigo-500" /> : <VolumeX className="w-4 h-4 text-slate-400" />}
+            {soundEnabled ? <Volume2 className="w-4 h-4 text-cyan-500" /> : <VolumeX className="w-4 h-4 text-slate-400" />}
           </button>
 
           {/* Dark / Light Theme Toggle */}
@@ -183,7 +183,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar, activeTab, setA
             onClick={toggleTheme}
             aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
             className="p-2 rounded-xl text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-            title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+            title={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
           >
             {theme === 'dark' ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-600" />}
           </button>
@@ -193,20 +193,20 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar, activeTab, setA
             <button
               onClick={() => setActiveTab('profile')}
               className="flex items-center gap-2 pl-1 group"
-              title="View Learner Profile"
+              title="Command Dossier & Profile"
             >
               <img
                 src={user.avatar}
                 alt={user.name}
-                className="w-8 h-8 rounded-full object-cover ring-2 ring-indigo-500/40 group-hover:ring-indigo-500 transition-all"
+                className="w-8 h-8 rounded-full object-cover ring-2 ring-cyan-500/40 group-hover:ring-cyan-400 transition-all"
               />
             </button>
           ) : (
             <button
               onClick={() => setActiveTab('auth')}
-              className="px-3.5 py-1.5 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 rounded-xl transition-all shadow-sm shadow-indigo-500/20"
+              className="px-3.5 py-1.5 text-xs font-bold text-white bg-cyan-600 hover:bg-cyan-500 rounded-xl transition-all shadow-md shadow-cyan-600/30"
             >
-              Sign In
+              Enter Universe
             </button>
           )}
         </div>

@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Course, Lesson, Note } from '../types';
+import { Course, Lesson, Note, VisualDiagram, CodeExercise } from '../types';
 import { useAuth } from '../context/AuthContext';
 import {
   ArrowLeft,
+  ArrowRight,
   Play,
   Pause,
   RotateCcw,
@@ -28,6 +29,10 @@ import {
   BookOpen,
   MessageSquare,
   X,
+  Code2,
+  Terminal,
+  Activity,
+  Compass,
 } from 'lucide-react';
 import { playSuccessSound, playXpSound } from '../utils/sound';
 import { triggerConfetti } from '../utils/confetti';
@@ -55,40 +60,63 @@ export const LessonPlayerPage: React.FC<LessonPlayerPageProps> = ({
   const [completedLessonIds, setCompletedLessonIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // 6-Stage Quest Engine State
+  const [activeStage, setActiveStage] = useState<number>(1);
+  const [completedStages, setCompletedStages] = useState<number[]>([1]);
+
+  // Stage 2: Visual Diagram Interactive Node Selection
+  const [selectedDiagNode, setSelectedDiagNode] = useState<string>('n1');
+
+  // Stage 4: Live Code Sandbox State
+  const [codeContent, setCodeContent] = useState<string>(`function computeCosineSimilarity(a: number[], b: number[]): number {
+  let dotProduct = 0;
+  let normA = 0;
+  let normB = 0;
+
+  for (let i = 0; i < a.length; i++) {
+    dotProduct += a[i] * b[i];
+    normA += a[i] * a[i];
+    normB += b[i] * b[i];
+  }
+
+  const denominator = Math.sqrt(normA) * Math.sqrt(normB);
+  return denominator === 0 ? 0 : dotProduct / denominator;
+}
+
+console.log("Vector Similarity:", computeCosineSimilarity([1, 2, 3], [1, 2, 3]));`);
+
+  const [codeOutput, setCodeOutput] = useState<string>('');
+  const [codeRunning, setCodeRunning] = useState<boolean>(false);
+  const [testResults, setTestResults] = useState<any[]>([]);
+
+  // Stage 5: Mini Challenge State
+  const [selectedOption, setSelectedOption] = useState<number | null>(null);
+  const [isAnswerSubmitted, setIsAnswerSubmitted] = useState<boolean>(false);
+
   // Video player state
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [playbackSpeed, setPlaybackSpeed] = useState(1);
   const [videoProgress, setVideoProgress] = useState(0);
   const [theaterMode, setTheaterMode] = useState(false);
-  const [activeTab, setActiveTab] = useState<'content' | 'transcript' | 'notes' | 'resources'>('content');
 
-  // Notes state
+  // Notes & Bookmarks
   const [notes, setNotes] = useState<Note[]>([]);
   const [newNoteText, setNewNoteText] = useState('');
-  const [savingNote, setSavingNote] = useState(false);
+  const [notesDrawerOpen, setNotesDrawerOpen] = useState(false);
+  const [isBookmarked, setIsBookmarked] = useState(false);
 
-  // AI Tutor sidebar state
+  // AI Mentor sidebar
   const [aiSidebarOpen, setAiSidebarOpen] = useState(false);
   const [aiPrompt, setAiPrompt] = useState('');
   const [aiLoading, setAiLoading] = useState(false);
+  const [aiMode, setAiMode] = useState<'explain' | 'practice' | 'challenge' | 'revision' | 'exam'>('explain');
   const [aiChatHistory, setAiChatHistory] = useState<Array<{ role: 'user' | 'assistant'; text: string; mode?: string }>>([
     {
       role: 'assistant',
-      text: `Hi ${user?.name.split(' ')[0] || 'there'}! I'm **Lumina**, your personal AI tutor. Ask me anything about this lesson or click a quick prompt below for simple analogies, real-world examples, or hints!`,
+      text: `Greetings, Commander ${user?.name.split(' ')[0] || 'Cadet'}! I am **NOVA Mentor**, your learning companion. I can provide step-by-step explanations, guide your live code exercises, or duel in Challenge Mode!`,
     },
   ]);
-
-  // Assignment submission state
-  const [assignmentCode, setAssignmentCode] = useState(`// Implement your tool calling agent here
-export async function runAgent(input: string) {
-  // your solution
-  return { status: "success", result: "Agent executed successfully" };
-}`);
-  const [submittedAssignment, setSubmittedAssignment] = useState(false);
-
-  // Copied code feedback
-  const [copiedCode, setCopiedCode] = useState(false);
 
   useEffect(() => {
     fetchCourseAndLesson();
@@ -102,18 +130,32 @@ export async function runAgent(input: string) {
       ]);
 
       if (cRes.ok) {
-        const data = await cRes.json();
-        setCourse(data.course);
-        setCompletedLessonIds(data.enrollment?.completedLessonIds || []);
+        const cData = await cRes.json();
+        setCourse(cData.course);
+        setCompletedLessonIds(cData.enrollment?.completedLessonIds || []);
 
-        const allLessons = data.course?.chapters?.flatMap((ch: any) => ch.lessons) || [];
-        const found = allLessons.find((l: Lesson) => l.id === lessonId) || allLessons[0];
-        setCurrentLesson(found);
+        // Find active lesson
+        let foundLesson: Lesson | null = null;
+        for (const ch of cData.course.chapters) {
+          const l = ch.lessons.find((les: Lesson) => les.id === lessonId);
+          if (l) {
+            foundLesson = l;
+            break;
+          }
+        }
+        if (!foundLesson && cData.course.chapters[0]?.lessons[0]) {
+          foundLesson = cData.course.chapters[0].lessons[0];
+        }
+        setCurrentLesson(foundLesson);
+
+        if (foundLesson?.stages?.stage4Exercise?.starterCode) {
+          setCodeContent(foundLesson.stages.stage4Exercise.starterCode);
+        }
       }
 
       if (notesRes.ok) {
-        const notesData = await notesRes.json();
-        setNotes(notesData.notes || []);
+        const nData = await notesRes.json();
+        setNotes(nData.notes || []);
       }
     } catch (err) {
       console.error('Failed to load lesson:', err);
@@ -122,76 +164,105 @@ export async function runAgent(input: string) {
     }
   };
 
-  // Video player controls
+  // Video controls
   const togglePlay = () => {
-    if (videoRef.current) {
-      if (isPlaying) {
-        videoRef.current.pause();
-      } else {
-        videoRef.current.play();
-      }
-      setIsPlaying(!isPlaying);
+    if (!videoRef.current) return;
+    if (isPlaying) {
+      videoRef.current.pause();
+      setIsPlaying(false);
+    } else {
+      videoRef.current.play();
+      setIsPlaying(true);
     }
   };
 
   const handleTimeUpdate = () => {
-    if (videoRef.current) {
-      const current = videoRef.current.currentTime;
-      const duration = videoRef.current.duration || 1;
-      setVideoProgress((current / duration) * 100);
-    }
+    if (!videoRef.current) return;
+    const progress = (videoRef.current.currentTime / videoRef.current.duration) * 100;
+    setVideoProgress(progress || 0);
   };
 
   const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = Number(e.target.value);
-    if (videoRef.current) {
-      const duration = videoRef.current.duration || 1;
-      videoRef.current.currentTime = (val / 100) * duration;
-      setVideoProgress(val);
-    }
+    if (!videoRef.current) return;
+    const time = (parseFloat(e.target.value) / 100) * videoRef.current.duration;
+    videoRef.current.currentTime = time;
+    setVideoProgress(parseFloat(e.target.value));
   };
 
   const changeSpeed = (speed: number) => {
-    setPlaybackSpeed(speed);
     if (videoRef.current) {
       videoRef.current.playbackRate = speed;
+      setPlaybackSpeed(speed);
     }
   };
 
-  // Lesson Completion
-  const handleCompleteLesson = async () => {
-    if (!currentLesson || !course) return;
-
+  // Run code sandbox
+  const handleRunCode = async () => {
+    setCodeRunning(true);
     try {
-      const res = await fetch('/api/progress/complete-lesson', {
+      const res = await fetch('/api/code/run', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          courseId: course.id,
-          lessonId: currentLesson.id,
-          xpReward: currentLesson.xpReward,
+          code: codeContent,
+          language: 'typescript',
+          testCases: currentLesson?.stages?.stage4Exercise?.testCases || [
+            { input: '[1, 0], [1, 0]', expectedOutput: '1.00', description: 'Identical vectors score 1.0' },
+            { input: '[1, 0], [0, 1]', expectedOutput: '0.00', description: 'Orthogonal vectors score 0.0' },
+          ],
         }),
       });
 
       if (res.ok) {
         const data = await res.json();
+        setCodeOutput(data.output);
+        setTestResults(data.testResults || []);
+        if (data.allPassed) {
+          playSuccessSound(soundEnabled);
+          if (!completedStages.includes(4)) {
+            setCompletedStages(prev => [...prev, 4]);
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Failed to run code sandbox:', err);
+      setCodeOutput('Execution error.');
+    } finally {
+      setCodeRunning(false);
+    }
+  };
+
+  // Advance Quest Stage
+  const handleAdvanceStage = (nextStage: number) => {
+    if (!completedStages.includes(activeStage)) {
+      setCompletedStages(prev => [...prev, activeStage]);
+    }
+    setActiveStage(nextStage);
+    playSuccessSound(soundEnabled);
+
+    // If reaching Stage 6, trigger full quest completion
+    if (nextStage === 6) {
+      handleCompleteLesson();
+    }
+  };
+
+  // Complete lesson / mission
+  const handleCompleteLesson = async () => {
+    if (!currentLesson || !course) return;
+    try {
+      const res = await fetch(`/api/courses/${course.id}/lessons/${currentLesson.id}/complete`, {
+        method: 'POST',
+      });
+      if (res.ok) {
+        const data = await res.json();
         playSuccessSound(soundEnabled);
         triggerConfetti();
 
-        // Update local completed state
-        setCompletedLessonIds(prev =>
-          prev.includes(currentLesson.id) ? prev : [...prev, currentLesson.id]
-        );
-
-        // Update XP locally
-        updateUserXpLocally(data.xpAwarded, data.leveledUp, data.newLevel);
-
-        // Advance to next lesson after small pause
-        const next = getNextLesson();
-        if (next) {
-          setTimeout(() => {
-            onNavigateLesson(next.id);
-          }, 1200);
+        if (!completedLessonIds.includes(currentLesson.id)) {
+          setCompletedLessonIds(prev => [...prev, currentLesson.id]);
+        }
+        if (data.user) {
+          updateUserXpLocally(data.xpAdded || currentLesson.xpReward, false, data.user.level);
         }
       }
     } catch (err) {
@@ -199,62 +270,50 @@ export async function runAgent(input: string) {
     }
   };
 
-  // Notes actions
-  const handleSaveNote = async () => {
-    if (!newNoteText.trim() || !course || !currentLesson) return;
-    setSavingNote(true);
-
+  // Add note
+  const handleAddNote = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newNoteText.trim() || !currentLesson) return;
     try {
       const res = await fetch('/api/notes', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          courseId: course.id,
+          courseId,
           lessonId: currentLesson.id,
           lessonTitle: currentLesson.title,
-          text: newNoteText.trim(),
+          text: newNoteText,
         }),
       });
-
       if (res.ok) {
         const data = await res.json();
         setNotes(prev => [data.note, ...prev]);
         setNewNoteText('');
-        playXpSound(soundEnabled);
       }
     } catch (err) {
       console.error('Failed to save note:', err);
-    } finally {
-      setSavingNote(false);
     }
   };
 
-  const handleDeleteNote = async (id: string) => {
-    try {
-      const res = await fetch(`/api/notes/${id}`, { method: 'DELETE' });
-      if (res.ok) {
-        setNotes(prev => prev.filter(n => n.id !== id));
-      }
-    } catch (err) {
-      console.error('Failed to delete note:', err);
-    }
-  };
+  // Send AI Mentor prompt
+  const handleSendAiPrompt = async (promptToSend?: string, modeOverride?: string) => {
+    const text = promptToSend || aiPrompt;
+    if (!text.trim()) return;
+    const mode = (modeOverride || aiMode) as any;
 
-  // AI Tutor Quick Action
-  const askAiTutor = async (promptText: string, mode: string = 'explain') => {
-    setAiSidebarOpen(true);
+    setAiChatHistory(prev => [...prev, { role: 'user', text, mode }]);
+    setAiPrompt('');
     setAiLoading(true);
-    setAiChatHistory(prev => [...prev, { role: 'user', text: promptText, mode }]);
 
     try {
       const res = await fetch('/api/ai/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          prompt: promptText,
-          lessonTitle: currentLesson?.title,
-          courseTitle: course?.title,
+          prompt: text,
           mode,
+          courseTitle: course?.title,
+          lessonTitle: currentLesson?.title,
         }),
       });
 
@@ -264,40 +323,9 @@ export async function runAgent(input: string) {
         playXpSound(soundEnabled);
       }
     } catch (err) {
-      setAiChatHistory(prev => [
-        ...prev,
-        { role: 'assistant', text: 'Sorry, I ran into an issue processing that. Please try again!' },
-      ]);
+      console.error('AI chat failed:', err);
     } finally {
       setAiLoading(false);
-    }
-  };
-
-  // Assignment submission
-  const handleSubmitAssignment = async () => {
-    if (!course || !currentLesson) return;
-    try {
-      const res = await fetch('/api/instructor/submissions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          assignmentId: currentLesson.assignmentId || 'assign-1',
-          lessonId: currentLesson.id,
-          courseId: course.id,
-          studentId: user?.id,
-          studentName: user?.name,
-          studentAvatar: user?.avatar,
-          content: assignmentCode,
-        }),
-      });
-      if (res.ok) {
-        setSubmittedAssignment(true);
-        playSuccessSound(soundEnabled);
-        triggerConfetti();
-        updateUserXpLocally(100, false, user?.level || 1);
-      }
-    } catch (err) {
-      console.error('Failed to submit assignment:', err);
     }
   };
 
@@ -310,7 +338,7 @@ export async function runAgent(input: string) {
   if (loading || !course || !currentLesson) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-cyan-500"></div>
       </div>
     );
   }
@@ -319,537 +347,514 @@ export async function runAgent(input: string) {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6 animate-fadeIn">
-      {/* Top Navigation Bar */}
-      <div className="flex items-center justify-between pb-4 border-b border-slate-200 dark:border-slate-800">
+      {/* Top Navigation & Status Bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-800">
         <button
           onClick={onBack}
-          className="inline-flex items-center gap-2 text-xs sm:text-sm font-bold text-slate-600 dark:text-slate-400 hover:text-indigo-600 transition-colors"
+          className="inline-flex items-center gap-2 text-xs sm:text-sm font-bold text-slate-400 hover:text-cyan-400 transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
-          <span>Back to Course Syllabus</span>
+          <span>Exit Studio to {course.title}</span>
         </button>
 
-        <div className="flex items-center gap-2 sm:gap-3">
-          {/* Quick AI Tutor Toggle Button */}
+        <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+          {/* Notes Toggle */}
           <button
-            onClick={() => setAiSidebarOpen(!aiSidebarOpen)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-pink-500/10 text-pink-600 dark:text-pink-400 border border-pink-500/30 hover:bg-pink-500/20 transition-all shadow-sm"
+            onClick={() => setNotesDrawerOpen(!notesDrawerOpen)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-800 text-slate-300 hover:bg-slate-700 transition-colors border border-slate-700"
           >
-            <Bot className="w-3.5 h-3.5" />
-            <span>Ask Lumina AI</span>
+            <FileText className="w-3.5 h-3.5 text-cyan-400" />
+            <span>Notes ({notes.length})</span>
           </button>
 
-          <span className="text-xs font-bold px-3 py-1.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30">
+          {/* Bookmark Toggle */}
+          <button
+            onClick={() => setIsBookmarked(!isBookmarked)}
+            className={`p-2 rounded-xl transition-colors border ${
+              isBookmarked
+                ? 'bg-amber-500/20 text-amber-400 border-amber-500/40'
+                : 'bg-slate-800 text-slate-400 border-slate-700 hover:text-white'
+            }`}
+            title="Bookmark Mission"
+          >
+            <Bookmark className="w-4 h-4 fill-current" />
+          </button>
+
+          {/* NOVA AI Mentor Toggle */}
+          <button
+            onClick={() => setAiSidebarOpen(!aiSidebarOpen)}
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-md shadow-violet-600/20 hover:scale-105 transition-all"
+          >
+            <Bot className="w-3.5 h-3.5" />
+            <span>NOVA Mentor</span>
+          </button>
+
+          <span className="text-xs font-extrabold px-3 py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400">
             +{currentLesson.xpReward} XP
           </span>
         </div>
       </div>
 
-      {/* Main Grid: Player on left, Curriculum & Tools on right */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Left Column: Player / Lesson Viewer */}
-        <div className={`space-y-6 ${theaterMode ? 'lg:col-span-3' : 'lg:col-span-2'}`}>
-          {/* VIDEO LESSON PLAYER */}
-          {currentLesson.type === 'video' && (
-            <div className="rounded-3xl overflow-hidden bg-slate-950 border border-slate-800 shadow-2xl relative group">
-              <video
-                ref={videoRef}
-                src={currentLesson.videoUrl}
-                onTimeUpdate={handleTimeUpdate}
-                onEnded={handleCompleteLesson}
-                className="w-full h-[280px] sm:h-[420px] object-cover"
-                poster={course.thumbnail}
-                playsInline
-              />
+      {/* 6-Stage Quest Stepper Navigation */}
+      <div className="p-4 rounded-2xl bg-slate-900/90 border border-slate-800 backdrop-blur-md overflow-x-auto shadow-lg">
+        <div className="flex items-center justify-between min-w-[700px] gap-2">
+          {[
+            { num: 1, title: '1. Briefing' },
+            { num: 2, title: '2. Visual Architecture' },
+            { num: 3, title: '3. Deep Dive' },
+            { num: 4, title: '4. Code Sandbox' },
+            { num: 5, title: '5. Knowledge Duel' },
+            { num: 6, title: '6. Quest Complete' },
+          ].map(stage => {
+            const isActive = activeStage === stage.num;
+            const isDone = completedStages.includes(stage.num);
 
-              {/* Custom Overlay Controls */}
-              <div className="p-4 bg-gradient-to-t from-slate-950 via-slate-950/80 to-transparent flex flex-col gap-2">
-                {/* Scrub bar */}
-                <input
-                  type="range"
-                  min="0"
-                  max="100"
-                  value={videoProgress}
-                  onChange={handleSeek}
-                  className="w-full h-1.5 bg-slate-700 accent-indigo-500 rounded-lg cursor-pointer"
-                />
+            return (
+              <button
+                key={stage.num}
+                onClick={() => setActiveStage(stage.num)}
+                className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-extrabold transition-all ${
+                  isActive
+                    ? 'bg-gradient-to-r from-cyan-600 to-indigo-600 text-white shadow-md shadow-cyan-600/30'
+                    : isDone
+                    ? 'bg-slate-800/80 text-emerald-400 border border-emerald-500/30'
+                    : 'bg-slate-800/40 text-slate-500 hover:text-slate-300'
+                }`}
+              >
+                {isDone && !isActive ? (
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                ) : (
+                  <span className="w-4 h-4 rounded-full bg-slate-700/60 text-[10px] flex items-center justify-center">
+                    {stage.num}
+                  </span>
+                )}
+                <span>{stage.title}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
 
-                <div className="flex items-center justify-between text-xs text-white">
-                  <div className="flex items-center gap-3">
-                    <button
-                      onClick={togglePlay}
-                      className="p-2 rounded-xl bg-white/20 hover:bg-white/30 transition-colors"
-                    >
-                      {isPlaying ? <Pause className="w-4 h-4 fill-white" /> : <Play className="w-4 h-4 fill-white" />}
-                    </button>
-
-                    {/* Speed options */}
-                    <div className="flex items-center gap-1 text-[11px] font-bold">
-                      {[1, 1.25, 1.5, 2].map(speed => (
-                        <button
-                          key={speed}
-                          onClick={() => changeSpeed(speed)}
-                          className={`px-2 py-0.5 rounded-md transition-colors ${
-                            playbackSpeed === speed ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'
-                          }`}
-                        >
-                          {speed}x
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => setTheaterMode(!theaterMode)}
-                      className="p-1.5 rounded-lg text-slate-400 hover:text-white"
-                      title="Toggle Theater Mode"
-                    >
-                      <Maximize2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
+      {/* Main Studio Viewport */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        <div className="lg:col-span-8 space-y-6">
+          {/* STAGE 1: CONCEPT DISCOVERY BRIEFING */}
+          {activeStage === 1 && (
+            <div className="p-8 rounded-3xl bg-slate-900/80 border border-slate-800 shadow-xl space-y-6 animate-fadeIn">
+              <div className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-widest text-cyan-400">
+                <Compass className="w-4 h-4" />
+                <span>Stage 1: Concept Discovery & Objectives</span>
               </div>
-            </div>
-          )}
-
-          {/* TEXT / NOTION STYLE LESSON */}
-          {currentLesson.type === 'text' && (
-            <div className="p-8 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl space-y-6">
-              <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-purple-600 dark:text-purple-400">
-                <FileText className="w-4 h-4" />
-                <span>Text-Based Deep Dive</span>
-              </div>
-              <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white leading-tight">
+              <h1 className="text-2xl sm:text-4xl font-extrabold text-white">
                 {currentLesson.title}
               </h1>
 
-              {/* Formatted Markdown Content */}
-              <div className="prose dark:prose-invert max-w-none text-slate-700 dark:text-slate-300 text-sm sm:text-base leading-relaxed space-y-4">
-                <div className="whitespace-pre-line">
-                  {currentLesson.markdownContent}
-                </div>
+              <div className="prose prose-invert text-slate-300 text-sm leading-relaxed whitespace-pre-line">
+                {currentLesson.stages?.stage1Concept || currentLesson.markdownContent}
               </div>
-            </div>
-          )}
 
-          {/* QUIZ PROMPT CARD (if quiz type) */}
-          {currentLesson.type === 'quiz' && (
-            <div className="p-8 rounded-3xl bg-gradient-to-tr from-amber-500/10 via-indigo-500/10 to-purple-500/10 border border-amber-500/30 text-center space-y-6">
-              <div className="w-16 h-16 rounded-2xl bg-amber-500/20 text-amber-500 flex items-center justify-center mx-auto shadow-lg shadow-amber-500/20">
-                <Award className="w-8 h-8" />
-              </div>
-              <div>
-                <span className="text-xs font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">
-                  Knowledge Checkpoint
+              <div className="p-5 rounded-2xl bg-cyan-950/30 border border-cyan-500/30 space-y-2">
+                <span className="text-xs font-bold text-cyan-300 uppercase tracking-wider block">
+                  Mission Target Objectives
                 </span>
-                <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white mt-1">
-                  {currentLesson.title}
-                </h2>
-                <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 mt-2 max-w-md mx-auto">
-                  Earn +40 XP and unlock the "Quiz Prodigy" trophy by proving your mastery!
-                </p>
+                <ul className="text-xs text-slate-300 space-y-1.5 list-disc list-inside">
+                  <li>Understand dense vector coordinates in semantic representation</li>
+                  <li>Calculate cosine distance between multi-dimensional queries</li>
+                  <li>Implement TypeScript cosine similarity in the live code sandbox</li>
+                </ul>
               </div>
 
-              <button
-                onClick={() => onOpenQuiz(currentLesson.quizId || 'quiz-ai-1')}
-                className="px-8 py-4 rounded-2xl font-extrabold text-slate-950 bg-gradient-to-r from-amber-400 to-amber-500 hover:opacity-95 shadow-xl shadow-amber-500/25 transition-all text-sm inline-flex items-center gap-2"
-              >
-                <Sparkles className="w-4 h-4" />
-                <span>Launch Interactive Quiz Assessment</span>
-              </button>
+              <div className="pt-4 border-t border-slate-800 flex justify-end">
+                <button
+                  onClick={() => handleAdvanceStage(2)}
+                  className="px-6 py-3 rounded-2xl font-extrabold text-slate-950 bg-cyan-400 hover:bg-cyan-300 shadow-lg shadow-cyan-400/25 flex items-center gap-2 text-xs transition-all"
+                >
+                  <span>Advance to Visual Architecture</span>
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
             </div>
           )}
 
-          {/* FLASHCARD PROMPT CARD (if flashcard type) */}
-          {currentLesson.type === 'flashcards' && (
-            <div className="p-8 rounded-3xl bg-gradient-to-tr from-pink-500/10 via-purple-500/10 to-indigo-500/10 border border-pink-500/30 text-center space-y-6">
-              <div className="w-16 h-16 rounded-2xl bg-pink-500/20 text-pink-500 flex items-center justify-center mx-auto shadow-lg shadow-pink-500/20">
-                <Layers className="w-8 h-8" />
-              </div>
-              <div>
-                <span className="text-xs font-bold uppercase tracking-wider text-pink-600 dark:text-pink-400">
-                  Memory Mastery
-                </span>
-                <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white mt-1">
-                  {currentLesson.title}
-                </h2>
-                <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 mt-2 max-w-md mx-auto">
-                  Drill key terminology with active recall flashcards.
-                </p>
-              </div>
-
-              <button
-                onClick={() => onOpenFlashcards(currentLesson.flashcardDeckId || 'deck-ai-1')}
-                className="px-8 py-4 rounded-2xl font-extrabold text-white bg-gradient-to-r from-pink-600 to-purple-600 hover:opacity-95 shadow-xl shadow-pink-500/25 transition-all text-sm inline-flex items-center gap-2"
-              >
-                <Layers className="w-4 h-4" />
-                <span>Start Flashcard Session</span>
-              </button>
-            </div>
-          )}
-
-          {/* PRACTICAL ASSIGNMENT WORKBENCH (if assignment type) */}
-          {currentLesson.type === 'assignment' && (
-            <div className="p-8 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl space-y-6">
+          {/* STAGE 2: INTERACTIVE VISUAL ARCHITECTURE DIAGRAM */}
+          {activeStage === 2 && (
+            <div className="p-8 rounded-3xl bg-slate-900/80 border border-slate-800 shadow-xl space-y-6 animate-fadeIn">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
-                  <BookOpen className="w-4 h-4" />
-                  <span>Hands-on Project Assignment</span>
+                <div className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-widest text-cyan-400">
+                  <Activity className="w-4 h-4" />
+                  <span>Stage 2: Visual System Architecture</span>
                 </div>
-                <span className="px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-500">
-                  +100 XP
-                </span>
+                <span className="text-xs text-slate-400">Click any node to inspect data projection</span>
               </div>
 
-              <h2 className="text-2xl font-extrabold text-slate-900 dark:text-white">
-                {currentLesson.title}
-              </h2>
+              {/* Interactive SVG / Node Graph Representation */}
+              <div className="p-6 rounded-2xl bg-slate-950 border border-slate-800 relative min-h-[320px] flex items-center justify-center">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full max-w-xl">
+                  {[
+                    { id: 'n1', title: 'Query: "Cute Puppy"', detail: 'Vector: [0.82, 0.14, 0.91]', color: '#38bdf8' },
+                    { id: 'n2', title: 'Match: "Golden Retriever"', detail: 'Cosine Sim: 0.94 (Near match)', color: '#10b981' },
+                    { id: 'n3', title: 'Match: "Canine Play"', detail: 'Cosine Sim: 0.88 (Semantic cluster)', color: '#10b981' },
+                    { id: 'n4', title: 'Distant: "Quantum Mechanics"', detail: 'Cosine Sim: 0.12 (Orthogonal)', color: '#f43f5e' },
+                  ].map(node => (
+                    <div
+                      key={node.id}
+                      onClick={() => setSelectedDiagNode(node.id)}
+                      className={`p-4 rounded-xl cursor-pointer border transition-all ${
+                        selectedDiagNode === node.id
+                          ? 'border-cyan-400 bg-slate-800 shadow-lg shadow-cyan-500/20 scale-105'
+                          : 'border-slate-800 bg-slate-900/60 hover:border-slate-700'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="w-3 h-3 rounded-full" style={{ backgroundColor: node.color }} />
+                        <h4 className="text-xs font-extrabold text-white">{node.title}</h4>
+                      </div>
+                      <p className="text-[11px] text-slate-400 font-mono">{node.detail}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
 
-              <p className="text-sm text-slate-600 dark:text-slate-300">
-                Implement a functional tool-calling agent in TypeScript or Python. Test your code and submit below for instructor evaluation.
-              </p>
+              <div className="p-4 rounded-2xl bg-slate-800/60 border border-slate-700 text-xs text-slate-300 leading-relaxed">
+                💡 <strong>Architectural Insight:</strong> In high-dimensional vector space, concepts that share semantic context inhabit adjacent coordinate sectors, allowing instant nearest-neighbor lookup via HNSW indexes.
+              </div>
 
-              {/* Code Workbench */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
-                  <span className="font-mono">agent-dispatcher.ts</span>
+              <div className="pt-4 border-t border-slate-800 flex justify-between">
+                <button
+                  onClick={() => setActiveStage(1)}
+                  className="px-4 py-2.5 rounded-xl font-bold text-slate-400 hover:text-white text-xs"
+                >
+                  ← Previous Briefing
+                </button>
+                <button
+                  onClick={() => handleAdvanceStage(3)}
+                  className="px-6 py-3 rounded-2xl font-extrabold text-slate-950 bg-cyan-400 hover:bg-cyan-300 shadow-lg shadow-cyan-400/25 flex items-center gap-2 text-xs transition-all"
+                >
+                  <span>Advance to Lesson Deep Dive</span>
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* STAGE 3: WATCH OR READ LESSON DEEP DIVE */}
+          {activeStage === 3 && (
+            <div className="space-y-6 animate-fadeIn">
+              {/* Optional Video Player if videoUrl exists */}
+              {currentLesson.videoUrl && (
+                <div className="rounded-3xl overflow-hidden bg-slate-950 border border-slate-800 shadow-2xl relative group">
+                  <iframe
+                    src={currentLesson.videoUrl}
+                    title={currentLesson.title}
+                    className="w-full h-[320px] sm:h-[420px]"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                  />
+                </div>
+              )}
+
+              {/* Rich Text Lesson Content */}
+              <div className="p-8 rounded-3xl bg-slate-900/80 border border-slate-800 shadow-xl space-y-6">
+                <div className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-widest text-cyan-400">
+                  <BookOpen className="w-4 h-4" />
+                  <span>Stage 3: Deep Computational Dive</span>
+                </div>
+                <div className="prose prose-invert text-slate-300 text-sm leading-relaxed whitespace-pre-line">
+                  {currentLesson.stages?.stage3Content || currentLesson.markdownContent}
+                </div>
+
+                <div className="pt-4 border-t border-slate-800 flex justify-between">
                   <button
-                    onClick={() => {
-                      navigator.clipboard.writeText(assignmentCode);
-                      setCopiedCode(true);
-                      setTimeout(() => setCopiedCode(false), 2000);
-                    }}
-                    className="flex items-center gap-1 hover:text-indigo-500 transition-colors"
+                    onClick={() => setActiveStage(2)}
+                    className="px-4 py-2.5 rounded-xl font-bold text-slate-400 hover:text-white text-xs"
                   >
-                    {copiedCode ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
-                    <span>{copiedCode ? 'Copied' : 'Copy Starter'}</span>
+                    ← Previous Stage
+                  </button>
+                  <button
+                    onClick={() => handleAdvanceStage(4)}
+                    className="px-6 py-3 rounded-2xl font-extrabold text-slate-950 bg-cyan-400 hover:bg-cyan-300 shadow-lg shadow-cyan-400/25 flex items-center gap-2 text-xs transition-all"
+                  >
+                    <span>Advance to Live Code Sandbox</span>
+                    <ChevronRight className="w-4 h-4" />
                   </button>
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* STAGE 4: INTERACTIVE CODE SANDBOX */}
+          {activeStage === 4 && (
+            <div className="p-8 rounded-3xl bg-slate-900/80 border border-slate-800 shadow-xl space-y-6 animate-fadeIn">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-widest text-cyan-400">
+                  <Terminal className="w-4 h-4" />
+                  <span>Stage 4: Interactive Live Code Sandbox</span>
+                </div>
+                <span className="text-xs px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-300 font-mono">
+                  TypeScript / Node Runtime
+                </span>
+              </div>
+
+              <div>
+                <h3 className="text-xl font-extrabold text-white mb-1">
+                  Implement Cosine Similarity in TypeScript
+                </h3>
+                <p className="text-xs text-slate-400">
+                  Calculate dot product and Euclidean vector magnitudes. Run code to execute test verification.
+                </p>
+              </div>
+
+              {/* Code Editor Area */}
+              <div className="rounded-2xl overflow-hidden border border-slate-700 bg-slate-950 shadow-inner">
+                <div className="px-4 py-2 bg-slate-900 border-b border-slate-800 flex items-center justify-between text-xs text-slate-400">
+                  <span className="font-mono font-bold text-cyan-400">solution.ts</span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={handleRunCode}
+                      disabled={codeRunning}
+                      className="px-4 py-1.5 rounded-xl font-extrabold text-slate-950 bg-emerald-400 hover:bg-emerald-300 shadow-md shadow-emerald-400/30 flex items-center gap-1.5 text-xs transition-all"
+                    >
+                      <Play className="w-3.5 h-3.5 fill-current" />
+                      <span>{codeRunning ? 'Executing...' : 'Run & Test'}</span>
+                    </button>
+                  </div>
+                </div>
+
                 <textarea
-                  value={assignmentCode}
-                  onChange={e => setAssignmentCode(e.target.value)}
-                  rows={8}
-                  className="w-full p-4 rounded-2xl bg-slate-950 text-indigo-300 font-mono text-xs border border-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  value={codeContent}
+                  onChange={e => setCodeContent(e.target.value)}
+                  rows={12}
+                  className="w-full p-4 bg-slate-950 font-mono text-xs sm:text-sm text-cyan-300 focus:outline-none resize-y selection:bg-cyan-500 selection:text-black"
+                  spellCheck={false}
                 />
               </div>
 
-              {submittedAssignment ? (
-                <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-500/40 text-emerald-600 dark:text-emerald-400 text-xs font-bold flex items-center gap-2">
-                  <CheckCircle2 className="w-5 h-5 text-emerald-500" />
-                  <span>Assignment Submitted! Graded status will appear in your profile shortly. (+100 XP granted)</span>
+              {/* Output Terminal & Test Results */}
+              {codeOutput && (
+                <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-3 font-mono text-xs">
+                  <div className="text-slate-400 font-bold uppercase tracking-wider text-[10px]">
+                    Terminal Output:
+                  </div>
+                  <pre className="text-emerald-400 whitespace-pre-wrap">{codeOutput}</pre>
+
+                  {testResults.length > 0 && (
+                    <div className="space-y-1.5 pt-2 border-t border-slate-800">
+                      <div className="text-[10px] uppercase font-bold text-slate-400">
+                        Automated Test Verifications:
+                      </div>
+                      {testResults.map((tc, idx) => (
+                        <div key={idx} className="flex items-center gap-2 text-xs text-emerald-400">
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          <span>{tc.description}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
-              ) : (
-                <button
-                  onClick={handleSubmitAssignment}
-                  className="w-full py-3.5 rounded-xl font-extrabold text-white bg-emerald-600 hover:bg-emerald-500 shadow-md transition-all flex items-center justify-center gap-2"
-                >
-                  <Send className="w-4 h-4" />
-                  <span>Submit Solution for Instructor Review</span>
-                </button>
               )}
+
+              <div className="pt-4 border-t border-slate-800 flex justify-between">
+                <button
+                  onClick={() => setActiveStage(3)}
+                  className="px-4 py-2.5 rounded-xl font-bold text-slate-400 hover:text-white text-xs"
+                >
+                  ← Previous Stage
+                </button>
+                <button
+                  onClick={() => handleAdvanceStage(5)}
+                  className="px-6 py-3 rounded-2xl font-extrabold text-slate-950 bg-cyan-400 hover:bg-cyan-300 shadow-lg shadow-cyan-400/25 flex items-center gap-2 text-xs transition-all"
+                >
+                  <span>Advance to Knowledge Challenge</span>
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
             </div>
           )}
 
-          {/* Lesson Tabs: Notes & Resources & Transcript */}
-          <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-4">
-            <div className="flex items-center gap-4 border-b border-slate-200 dark:border-slate-800 pb-3 text-xs font-bold">
-              <button
-                onClick={() => setActiveTab('content')}
-                className={`transition-colors ${activeTab === 'content' ? 'text-indigo-600 dark:text-indigo-400 border-b-2 border-indigo-600 pb-3 -mb-3.5' : 'text-slate-500'}`}
-              >
-                Lesson Overview
-              </button>
-              <button
-                onClick={() => setActiveTab('notes')}
-                className={`flex items-center gap-1.5 transition-colors ${activeTab === 'notes' ? 'text-indigo-600 dark:text-indigo-400 border-b-2 border-indigo-600 pb-3 -mb-3.5' : 'text-slate-500'}`}
-              >
-                <span>My Notes</span>
-                <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-indigo-100 dark:bg-indigo-900/60">
-                  {notes.length}
-                </span>
-              </button>
-              {currentLesson.transcript && (
-                <button
-                  onClick={() => setActiveTab('transcript')}
-                  className={`transition-colors ${activeTab === 'transcript' ? 'text-indigo-600 dark:text-indigo-400 border-b-2 border-indigo-600 pb-3 -mb-3.5' : 'text-slate-500'}`}
-                >
-                  Transcript
-                </button>
-              )}
-              {currentLesson.resources && (
-                <button
-                  onClick={() => setActiveTab('resources')}
-                  className={`transition-colors ${activeTab === 'resources' ? 'text-indigo-600 dark:text-indigo-400 border-b-2 border-indigo-600 pb-3 -mb-3.5' : 'text-slate-500'}`}
-                >
-                  Downloads ({currentLesson.resources.length})
-                </button>
-              )}
-            </div>
+          {/* STAGE 5: KNOWLEDGE DUEL / ADAPTIVE CHALLENGE */}
+          {activeStage === 5 && (
+            <div className="p-8 rounded-3xl bg-slate-900/80 border border-slate-800 shadow-xl space-y-6 animate-fadeIn">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-widest text-cyan-400">
+                  <Award className="w-4 h-4" />
+                  <span>Stage 5: Knowledge Evaluation Checkpoint</span>
+                </div>
+                <span className="text-xs text-amber-400 font-bold">+50 XP Challenge</span>
+              </div>
 
-            {/* Tab: Notes */}
-            {activeTab === 'notes' && (
-              <div className="space-y-4 pt-2">
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={newNoteText}
-                    onChange={e => setNewNoteText(e.target.value)}
-                    placeholder="Type a key takeaway or personal note for this lesson..."
-                    className="flex-1 px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    onKeyDown={e => e.key === 'Enter' && handleSaveNote()}
-                  />
+              <div>
+                <h3 className="text-xl font-extrabold text-white mb-2">
+                  What is the fundamental difference between Cosine Similarity and Euclidean Distance?
+                </h3>
+                <p className="text-xs text-slate-400">
+                  Select the correct answer to complete this stage and claim your XP reward.
+                </p>
+              </div>
+
+              <div className="space-y-3">
+                {[
+                  'Cosine Similarity measures angle orientation regardless of magnitude; Euclidean measures straight-line distance.',
+                  'Euclidean Distance can only be used on 2D coordinates; Cosine Similarity works only on text.',
+                  'Cosine distance is always an integer between 0 and 100; Euclidean distance is negative.',
+                  'There is no mathematical difference; they are exact aliases.',
+                ].map((opt, idx) => (
                   <button
-                    onClick={handleSaveNote}
-                    disabled={savingNote || !newNoteText.trim()}
-                    className="px-4 py-2.5 rounded-xl font-bold text-xs text-white bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 transition-all"
+                    key={idx}
+                    onClick={() => {
+                      setSelectedOption(idx);
+                      setIsAnswerSubmitted(true);
+                      if (idx === 0) {
+                        playSuccessSound(soundEnabled);
+                      }
+                    }}
+                    className={`w-full p-4 rounded-2xl text-left text-xs sm:text-sm font-semibold transition-all border ${
+                      isAnswerSubmitted
+                        ? idx === 0
+                          ? 'bg-emerald-500/20 border-emerald-400 text-emerald-300'
+                          : selectedOption === idx
+                          ? 'bg-rose-500/20 border-rose-500 text-rose-300'
+                          : 'bg-slate-800/40 border-slate-700 text-slate-400'
+                        : selectedOption === idx
+                        ? 'bg-cyan-500/20 border-cyan-400 text-cyan-300'
+                        : 'bg-slate-800/70 border-slate-700 text-slate-300 hover:border-slate-600'
+                    }`}
                   >
-                    Save Note
+                    <div className="flex items-center gap-3">
+                      <span className="w-6 h-6 rounded-lg bg-slate-700/60 text-xs flex items-center justify-center font-bold">
+                        {String.fromCharCode(65 + idx)}
+                      </span>
+                      <span>{opt}</span>
+                    </div>
                   </button>
-                </div>
-
-                <div className="space-y-2">
-                  {notes.length === 0 ? (
-                    <div className="text-center py-6 text-xs text-slate-400">
-                      No notes yet. Add one above to keep track of key concepts!
-                    </div>
-                  ) : (
-                    notes.map(note => (
-                      <div
-                        key={note.id}
-                        className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700/60 flex items-start justify-between gap-2 text-xs"
-                      >
-                        <p className="text-slate-700 dark:text-slate-300">{note.text}</p>
-                        <button
-                          onClick={() => handleDeleteNote(note.id)}
-                          className="text-slate-400 hover:text-rose-500 transition-colors shrink-0"
-                        >
-                          <X className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Tab: Transcript */}
-            {activeTab === 'transcript' && currentLesson.transcript && (
-              <div className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed pt-2">
-                {currentLesson.transcript}
-              </div>
-            )}
-
-            {/* Tab: Resources */}
-            {activeTab === 'resources' && currentLesson.resources && (
-              <div className="space-y-2 pt-2">
-                {currentLesson.resources.map(res => (
-                  <div
-                    key={res.id}
-                    className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700/60 text-xs"
-                  >
-                    <div className="flex items-center gap-2">
-                      <Download className="w-4 h-4 text-indigo-500" />
-                      <span className="font-bold text-slate-800 dark:text-slate-200">{res.title}</span>
-                      {res.size && <span className="text-slate-400">({res.size})</span>}
-                    </div>
-                    <a
-                      href={res.url}
-                      className="text-indigo-600 dark:text-indigo-400 font-bold hover:underline"
-                    >
-                      Download
-                    </a>
-                  </div>
                 ))}
               </div>
-            )}
 
-            {/* Tab: Overview */}
-            {activeTab === 'content' && (
-              <div className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed pt-2 space-y-2">
-                <p>
-                  <strong>Lesson Objective:</strong> Gain deep intuition on {currentLesson.title}. Complete all interactive modules and quizzes to maximize your XP gain.
-                </p>
-                <div className="flex items-center gap-4 text-xs text-slate-400 pt-2">
-                  <span>⏱ Duration: {currentLesson.durationMinutes} mins</span>
-                  <span>🏆 XP Value: +{currentLesson.xpReward} XP</span>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Bottom Action Bar: Complete Lesson & Prev/Next */}
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
-            <div className="flex items-center gap-2 w-full sm:w-auto">
-              <button
-                onClick={() => getPrevLesson() && onNavigateLesson(getPrevLesson()!.id)}
-                disabled={!getPrevLesson()}
-                className="px-4 py-2.5 rounded-xl font-bold text-xs text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 disabled:opacity-40 transition-all flex items-center gap-1.5"
-              >
-                <ChevronLeft className="w-4 h-4" />
-                <span>Previous</span>
-              </button>
-              <button
-                onClick={() => getNextLesson() && onNavigateLesson(getNextLesson()!.id)}
-                disabled={!getNextLesson()}
-                className="px-4 py-2.5 rounded-xl font-bold text-xs text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 disabled:opacity-40 transition-all flex items-center gap-1.5"
-              >
-                <span>Next</span>
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </div>
-
-            <button
-              onClick={handleCompleteLesson}
-              className={`w-full sm:w-auto px-6 py-3 rounded-xl font-extrabold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-lg transition-all ${
-                isCurrentLessonCompleted
-                  ? 'bg-emerald-600 text-white hover:bg-emerald-500'
-                  : 'bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 text-white hover:opacity-95 shadow-indigo-600/30'
-              }`}
-            >
-              <CheckCircle2 className="w-4 h-4" />
-              <span>
-                {isCurrentLessonCompleted
-                  ? 'Completed (+XP Claimed)'
-                  : `Mark Complete & Earn +${currentLesson.xpReward} XP`}
-              </span>
-            </button>
-          </div>
-        </div>
-
-        {/* Right Column: Syllabus Drawer & AI Tutor Sidebar */}
-        <div className="lg:col-span-1 space-y-6">
-          {/* Lumina AI Quick Drawer */}
-          <div className="p-6 rounded-3xl bg-gradient-to-tr from-purple-900/30 via-indigo-900/30 to-pink-900/20 border border-purple-500/30 backdrop-blur-md shadow-xl space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-xl bg-pink-500 text-white flex items-center justify-center shadow-md shadow-pink-500/30">
-                  <Bot className="w-4 h-4" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-bold text-slate-900 dark:text-white">
-                    Lumina AI Tutor
-                  </h3>
-                  <div className="text-[10px] text-pink-500 font-semibold">
-                    Always ready to explain
+              {isAnswerSubmitted && (
+                <div className="p-4 rounded-2xl bg-emerald-950/30 border border-emerald-500/30 text-xs text-emerald-300 space-y-1">
+                  <div className="font-bold flex items-center gap-1.5">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                    <span>Evaluation Verified: Correct!</span>
                   </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Quick Action Prompt Pills */}
-            <div className="grid grid-cols-2 gap-2 text-[11px] font-semibold">
-              <button
-                onClick={() => askAiTutor('Can you explain this in simple terms with an analogy?', 'explain')}
-                className="p-2 rounded-xl bg-white/60 dark:bg-slate-800/60 hover:bg-white dark:hover:bg-slate-700 text-left border border-slate-200/50 dark:border-slate-700/50 transition-all"
-              >
-                💡 Explain simply (ELI5)
-              </button>
-              <button
-                onClick={() => askAiTutor('Give me a real-world production example of this concept', 'example')}
-                className="p-2 rounded-xl bg-white/60 dark:bg-slate-800/60 hover:bg-white dark:hover:bg-slate-700 text-left border border-slate-200/50 dark:border-slate-700/50 transition-all"
-              >
-                🛠️ Real-world code
-              </button>
-              <button
-                onClick={() => askAiTutor('Give me a subtle hint without spoiling the answer', 'hint')}
-                className="p-2 rounded-xl bg-white/60 dark:bg-slate-800/60 hover:bg-white dark:hover:bg-slate-700 text-left border border-slate-200/50 dark:border-slate-700/50 transition-all"
-              >
-                🧭 Give me a hint
-              </button>
-              <button
-                onClick={() => askAiTutor('Summarize the top 3 takeaways for this lesson', 'summary')}
-                className="p-2 rounded-xl bg-white/60 dark:bg-slate-800/60 hover:bg-white dark:hover:bg-slate-700 text-left border border-slate-200/50 dark:border-slate-700/50 transition-all"
-              >
-                📝 Top 3 takeaways
-              </button>
-            </div>
-
-            {/* Chat Messages */}
-            <div className="max-h-60 overflow-y-auto space-y-2 pr-1 text-xs">
-              {aiChatHistory.map((msg, i) => (
-                <div
-                  key={i}
-                  className={`p-3 rounded-2xl ${
-                    msg.role === 'user'
-                      ? 'bg-indigo-600 text-white ml-6 text-right'
-                      : 'bg-white/80 dark:bg-slate-800/80 text-slate-800 dark:text-slate-200 border border-slate-200/60 dark:border-slate-700/60 mr-4'
-                  }`}
-                >
-                  <div className="whitespace-pre-line">{msg.text}</div>
-                </div>
-              ))}
-              {aiLoading && (
-                <div className="p-3 rounded-2xl bg-white/80 dark:bg-slate-800/80 text-xs text-slate-400 italic animate-pulse">
-                  Lumina is thinking...
+                  <p className="text-slate-300">
+                    Cosine similarity inspects the angular orientation between high-dimensional vectors, ignoring absolute vector length.
+                  </p>
                 </div>
               )}
+
+              <div className="pt-4 border-t border-slate-800 flex justify-between">
+                <button
+                  onClick={() => setActiveStage(4)}
+                  className="px-4 py-2.5 rounded-xl font-bold text-slate-400 hover:text-white text-xs"
+                >
+                  ← Previous Stage
+                </button>
+                <button
+                  disabled={!isAnswerSubmitted}
+                  onClick={() => handleAdvanceStage(6)}
+                  className={`px-6 py-3 rounded-2xl font-extrabold flex items-center gap-2 text-xs transition-all ${
+                    isAnswerSubmitted
+                      ? 'bg-gradient-to-r from-amber-400 to-orange-500 text-slate-950 shadow-lg shadow-amber-500/30 hover:scale-105'
+                      : 'bg-slate-800 text-slate-600 cursor-not-allowed'
+                  }`}
+                >
+                  <Sparkles className="w-4 h-4" />
+                  <span>Claim Rewards & Complete Quest</span>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* STAGE 6: QUEST COMPLETION CELEBRATION */}
+          {activeStage === 6 && (
+            <div className="p-8 sm:p-12 rounded-3xl bg-gradient-to-br from-cyan-950/80 via-slate-900 to-purple-950/80 border border-cyan-500/40 text-center space-y-6 shadow-2xl shadow-cyan-500/20 animate-fadeIn">
+              <div className="w-20 h-20 rounded-3xl bg-gradient-to-tr from-amber-400 to-cyan-400 text-slate-950 flex items-center justify-center mx-auto shadow-xl shadow-cyan-500/40 animate-bounce-subtle">
+                <Award className="w-10 h-10" />
+              </div>
+
+              <div className="space-y-2">
+                <span className="text-xs font-extrabold uppercase tracking-widest text-cyan-400">
+                  Mission Accomplished
+                </span>
+                <h2 className="text-3xl sm:text-4xl font-extrabold text-white">
+                  Quest Sector Fully Conquered!
+                </h2>
+                <p className="text-sm text-slate-300 max-w-md mx-auto">
+                  You successfully mastered all 6 stages of <strong>{currentLesson.title}</strong> and advanced your skill mastery index.
+                </p>
+              </div>
+
+              <div className="inline-flex items-center gap-3 px-6 py-3 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-400 font-extrabold text-lg">
+                <Zap className="w-5 h-5 fill-amber-400" />
+                <span>+{currentLesson.xpReward} XP Awarded</span>
+              </div>
+
+              <div className="pt-6 flex flex-wrap items-center justify-center gap-4">
+                <button
+                  onClick={onBack}
+                  className="px-6 py-3.5 rounded-2xl font-bold text-xs sm:text-sm text-slate-300 bg-slate-800 hover:bg-slate-700 border border-slate-700 transition-all"
+                >
+                  Return to Syllabus
+                </button>
+                {getNextLesson() && (
+                  <button
+                    onClick={() => onNavigateLesson(getNextLesson()!.id)}
+                    className="px-8 py-3.5 rounded-2xl font-extrabold text-xs sm:text-sm text-slate-950 bg-cyan-400 hover:bg-cyan-300 shadow-xl shadow-cyan-400/30 flex items-center gap-2 transition-all hover:scale-105"
+                  >
+                    <span>Launch Next Mission</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Right Column: Mission Syllabus & Curriculum Index */}
+        <div className="lg:col-span-4 space-y-6">
+          <div className="p-6 rounded-3xl bg-slate-900/80 border border-slate-800 shadow-xl space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-extrabold text-white uppercase tracking-wider flex items-center gap-2">
+                <Layers className="w-4 h-4 text-cyan-400" />
+                <span>Sector Syllabus</span>
+              </h3>
+              <span className="text-xs text-slate-400">
+                {completedLessonIds.length} / {allLessons.length} Done
+              </span>
             </div>
 
-            {/* Chat Input */}
-            <form
-              onSubmit={e => {
-                e.preventDefault();
-                if (aiPrompt.trim()) {
-                  askAiTutor(aiPrompt.trim());
-                  setAiPrompt('');
-                }
-              }}
-              className="flex gap-2"
-            >
-              <input
-                type="text"
-                value={aiPrompt}
-                onChange={e => setAiPrompt(e.target.value)}
-                placeholder="Ask Lumina anything..."
-                className="flex-1 px-3 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs focus:outline-none focus:ring-2 focus:ring-pink-500"
-              />
-              <button
-                type="submit"
-                disabled={aiLoading || !aiPrompt.trim()}
-                className="p-2 rounded-xl bg-pink-600 hover:bg-pink-500 text-white disabled:opacity-50 transition-all"
-              >
-                <Send className="w-3.5 h-3.5" />
-              </button>
-            </form>
-          </div>
-
-          {/* Curriculum Tree Sidebar */}
-          <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
-            <h3 className="text-sm font-bold text-slate-900 dark:text-white">
-              Course Curriculum
-            </h3>
-
-            <div className="space-y-4 max-h-[420px] overflow-y-auto pr-1">
-              {course.chapters.map((ch, idx) => (
-                <div key={ch.id} className="space-y-1.5">
-                  <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+            <div className="space-y-4 max-h-[500px] overflow-y-auto pr-1">
+              {course.chapters.map(ch => (
+                <div key={ch.id} className="space-y-2">
+                  <span className="text-[11px] font-bold uppercase text-slate-400 tracking-wider block">
                     {ch.title}
-                  </div>
-                  <div className="space-y-1">
+                  </span>
+                  <div className="space-y-1.5">
                     {ch.lessons.map(l => {
-                      const active = l.id === currentLesson.id;
-                      const completed = completedLessonIds.includes(l.id);
+                      const isCurrent = l.id === currentLesson.id;
+                      const isDone = completedLessonIds.includes(l.id);
+
                       return (
                         <button
                           key={l.id}
                           onClick={() => onNavigateLesson(l.id)}
-                          className={`w-full p-2.5 rounded-xl text-left text-xs font-semibold flex items-center justify-between transition-all ${
-                            active
-                              ? 'bg-indigo-600 text-white shadow-md'
-                              : 'hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300'
+                          className={`w-full p-3 rounded-2xl text-left text-xs font-semibold flex items-center justify-between transition-all border ${
+                            isCurrent
+                              ? 'bg-cyan-500/10 border-cyan-500/40 text-cyan-300 font-bold shadow-md'
+                              : isDone
+                              ? 'bg-slate-800/40 border-slate-800 text-slate-300 hover:bg-slate-800'
+                              : 'bg-slate-900/40 border-transparent text-slate-400 hover:bg-slate-800'
                           }`}
                         >
-                          <div className="flex items-center gap-2 truncate">
-                            {completed ? (
-                              <CheckCircle2 className={`w-3.5 h-3.5 ${active ? 'text-white' : 'text-emerald-500'}`} />
+                          <div className="flex items-center gap-2.5 truncate">
+                            {isDone ? (
+                              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
                             ) : (
-                              <span className={`w-2 h-2 rounded-full ${active ? 'bg-white' : 'bg-slate-400'}`} />
+                              <Play className="w-3.5 h-3.5 text-slate-500 shrink-0" />
                             )}
                             <span className="truncate">{l.title}</span>
                           </div>
-                          <span className={`text-[10px] shrink-0 ${active ? 'text-indigo-200' : 'text-slate-400'}`}>
-                            {l.durationMinutes}m
+                          <span className="text-[10px] text-amber-400 font-bold shrink-0">
+                            +{l.xpReward} XP
                           </span>
                         </button>
                       );
@@ -861,6 +866,155 @@ export async function runAgent(input: string) {
           </div>
         </div>
       </div>
+
+      {/* Notes Drawer Modal */}
+      {notesDrawerOpen && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex justify-end">
+          <div className="w-full max-w-md bg-slate-900 border-l border-slate-800 p-6 flex flex-col justify-between animate-fadeIn space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+              <h3 className="text-base font-extrabold text-white flex items-center gap-2">
+                <FileText className="w-4 h-4 text-cyan-400" />
+                <span>Mission Study Notes</span>
+              </h3>
+              <button onClick={() => setNotesDrawerOpen(false)} className="text-slate-400 hover:text-white">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Notes List */}
+            <div className="flex-1 overflow-y-auto space-y-3 pr-1">
+              {notes.length === 0 ? (
+                <p className="text-xs text-slate-500 text-center py-10">No notes recorded for this course yet.</p>
+              ) : (
+                notes.map(note => (
+                  <div key={note.id} className="p-3 rounded-xl bg-slate-800/60 border border-slate-700/60 space-y-1 text-xs">
+                    <span className="text-[10px] text-cyan-400 font-bold block">{note.lessonTitle}</span>
+                    <p className="text-slate-200 whitespace-pre-wrap">{note.text}</p>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <form onSubmit={handleAddNote} className="space-y-2 pt-2 border-t border-slate-800">
+              <textarea
+                value={newNoteText}
+                onChange={e => setNewNoteText(e.target.value)}
+                placeholder="Write a personal observation or takeaway..."
+                rows={3}
+                className="w-full p-3 rounded-xl bg-slate-800 border border-slate-700 text-xs text-white focus:outline-none focus:border-cyan-500"
+              />
+              <button
+                type="submit"
+                className="w-full py-2 rounded-xl text-xs font-bold text-slate-950 bg-cyan-400 hover:bg-cyan-300"
+              >
+                Save Note
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* NOVA AI Mentor Sliding Drawer */}
+      {aiSidebarOpen && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex justify-end">
+          <div className="w-full max-w-md bg-slate-900 border-l border-violet-500/30 p-6 flex flex-col justify-between animate-fadeIn space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+              <div className="flex items-center gap-2">
+                <Bot className="w-5 h-5 text-violet-400" />
+                <div>
+                  <h3 className="text-base font-extrabold text-white">NOVA AI Mentor</h3>
+                  <span className="text-[10px] text-violet-400 font-bold uppercase tracking-wider">
+                    {aiMode.toUpperCase()} MODE ACTIVE
+                  </span>
+                </div>
+              </div>
+              <button onClick={() => setAiSidebarOpen(false)} className="text-slate-400 hover:text-white">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* AI Mode Selector Buttons */}
+            <div className="grid grid-cols-3 gap-1.5 pb-2 border-b border-slate-800">
+              {(['explain', 'practice', 'challenge', 'revision', 'exam'] as const).map(m => (
+                <button
+                  key={m}
+                  onClick={() => setAiMode(m)}
+                  className={`py-1.5 rounded-lg text-[10px] font-extrabold uppercase transition-all ${
+                    aiMode === m
+                      ? 'bg-violet-600 text-white shadow-sm'
+                      : 'bg-slate-800 text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  {m}
+                </button>
+              ))}
+            </div>
+
+            {/* Chat History */}
+            <div className="flex-1 overflow-y-auto space-y-3 pr-1 text-xs">
+              {aiChatHistory.map((msg, i) => (
+                <div
+                  key={i}
+                  className={`p-3.5 rounded-2xl ${
+                    msg.role === 'user'
+                      ? 'bg-violet-950/60 border border-violet-500/30 text-white ml-6'
+                      : 'bg-slate-800/80 border border-slate-700 text-slate-200 mr-6'
+                  }`}
+                >
+                  <p className="whitespace-pre-line leading-relaxed">{msg.text}</p>
+                </div>
+              ))}
+              {aiLoading && (
+                <div className="p-3 rounded-xl bg-slate-800 text-slate-400 text-xs italic flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-violet-400 animate-ping" />
+                  <span>NOVA Mentor is synthesizing response...</span>
+                </div>
+              )}
+            </div>
+
+            {/* Quick Prompt Suggestions */}
+            <div className="flex gap-2 overflow-x-auto pb-1 text-[11px]">
+              <button
+                onClick={() => handleSendAiPrompt('Explain this concept step-by-step with an analogy', 'explain')}
+                className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 shrink-0"
+              >
+                💡 Explain Step-by-Step
+              </button>
+              <button
+                onClick={() => handleSendAiPrompt('Give me a practice exercise with hints', 'practice')}
+                className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 shrink-0"
+              >
+                🎯 Practice Challenge
+              </button>
+              <button
+                onClick={() => handleSendAiPrompt('Test my knowledge with a duel question', 'challenge')}
+                className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 shrink-0"
+              >
+                ⚔️ Knowledge Duel
+              </button>
+            </div>
+
+            {/* Input Form */}
+            <div className="flex gap-2 pt-2 border-t border-slate-800">
+              <input
+                type="text"
+                value={aiPrompt}
+                onChange={e => setAiPrompt(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleSendAiPrompt()}
+                placeholder={`Ask in ${aiMode} mode...`}
+                className="flex-1 px-3.5 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-xs text-white focus:outline-none focus:border-violet-500"
+              />
+              <button
+                onClick={() => handleSendAiPrompt()}
+                disabled={aiLoading}
+                className="px-4 py-2.5 rounded-xl font-bold text-white bg-violet-600 hover:bg-violet-500 shadow-md transition-all text-xs flex items-center justify-center"
+              >
+                <Send className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

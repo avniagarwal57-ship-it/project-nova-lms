@@ -5,15 +5,20 @@ import {
   Flame,
   Zap,
   Award,
-  BookOpen,
+  Globe,
   ArrowRight,
   CheckCircle2,
   Bot,
   Layers,
-  BarChart3,
+  Network,
   Star,
-  Shield,
+  Compass,
   Play,
+  Cpu,
+  Terminal,
+  Palette,
+  Briefcase,
+  Atom,
 } from 'lucide-react';
 import { playSuccessSound } from '../utils/sound';
 
@@ -35,298 +40,187 @@ export const LandingPage: React.FC<LandingPageProps> = ({ setActiveTab, onExplor
   };
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-slate-950 text-slate-100 overflow-hidden selection:bg-cyan-500 selection:text-black">
       {/* Hero Section */}
-      <section className="relative overflow-hidden pt-12 pb-20 md:pt-20 md:pb-32">
-        {/* Ambient Gradient Blobs */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-gradient-to-tr from-indigo-500/20 via-purple-500/20 to-pink-500/10 blur-[120px] rounded-full pointer-events-none" />
+      <section className="relative overflow-hidden pt-12 pb-20 md:pt-24 md:pb-32">
+        {/* Ambient Cosmic Glows */}
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[900px] h-[550px] bg-gradient-to-tr from-cyan-500/15 via-indigo-600/20 to-violet-500/15 blur-[140px] rounded-full pointer-events-none" />
+        <div className="absolute -left-40 top-1/3 w-[500px] h-[500px] bg-cyan-600/10 blur-[120px] rounded-full pointer-events-none" />
 
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          {/* Pill Badge */}
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 text-xs font-bold uppercase tracking-wider mb-8 shadow-sm">
-            <Sparkles className="w-4 h-4 text-amber-500 animate-spin" />
-            <span>The Next Generation of Learning</span>
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-8">
+          {/* Futuristic Pill Badge */}
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-slate-900/90 border border-cyan-500/40 text-cyan-400 text-xs font-extrabold uppercase tracking-widest shadow-lg shadow-cyan-500/10 animate-fadeIn">
+            <Sparkles className="w-4 h-4 text-cyan-400 animate-spin" />
+            <span>PROJECT NOVA • Next-Generation Learning Universe</span>
           </div>
 
-          <h1 className="text-4xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight text-slate-900 dark:text-white max-w-4xl mx-auto leading-[1.1] mb-6">
-            Where Curiosity Meets <br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500">
-              Unstoppable Habit.
+          <h1 className="text-4xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight text-white max-w-5xl mx-auto leading-[1.1]">
+            Where Learning is an Adventure, <br />
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-sky-300 to-violet-400">
+              and Knowledge is Planetary Power.
             </span>
           </h1>
 
-          <p className="text-lg sm:text-xl text-slate-600 dark:text-slate-300 max-w-2xl mx-auto mb-10 leading-relaxed">
-            Gamified like <strong className="text-indigo-600 dark:text-indigo-400 font-semibold">Duolingo</strong>. 
-            Organized like <strong className="text-purple-600 dark:text-purple-400 font-semibold">Notion</strong>. 
-            Structured like <strong className="text-pink-600 dark:text-pink-400 font-semibold">Coursera</strong>. 
-            Powered by modern AI tutoring.
+          <p className="text-base sm:text-xl text-slate-300 max-w-3xl mx-auto leading-relaxed">
+            Enter an intelligent, gamified learning cosmos. Conquer multi-stage quests, unlock connected skill trees, spar with your personal AI mentor, and advance from beginner cadet to universe master.
           </p>
 
-          {/* CTA Buttons */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 max-w-md mx-auto">
+          {/* CTAs */}
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 max-w-md mx-auto pt-2">
             <button
               onClick={handleStart}
-              className="w-full sm:w-auto px-8 py-4 rounded-2xl font-extrabold text-white bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:opacity-95 shadow-xl shadow-indigo-500/30 transition-all flex items-center justify-center gap-2 group text-base"
+              className="w-full sm:w-auto px-8 py-4 rounded-2xl font-extrabold text-slate-950 bg-gradient-to-r from-cyan-400 via-sky-300 to-indigo-300 hover:scale-105 shadow-xl shadow-cyan-500/30 transition-all flex items-center justify-center gap-2 group text-base"
             >
-              <span>{user ? 'Go to Learner Dashboard' : 'Start Learning Free'}</span>
+              <span>{user ? 'Enter Command Center' : 'Launch Your Odyssey'}</span>
               <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
             </button>
             <button
-              onClick={() => setActiveTab('explore')}
-              className="w-full sm:w-auto px-8 py-4 rounded-2xl font-bold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800/80 hover:bg-slate-50 dark:hover:bg-slate-700/80 border border-slate-200 dark:border-slate-700 shadow-sm transition-all text-base"
+              onClick={() => setActiveTab('worlds')}
+              className="w-full sm:w-auto px-8 py-4 rounded-2xl font-bold text-slate-200 bg-slate-900/80 hover:bg-slate-800 border border-slate-700 shadow-sm transition-all text-base flex items-center justify-center gap-2"
             >
-              Browse 50+ Courses
+              <Globe className="w-5 h-5 text-cyan-400" />
+              <span>Explore 7 Worlds</span>
             </button>
           </div>
 
-          {/* Live Micro-Pill Social Proof */}
-          <div className="mt-12 flex flex-wrap items-center justify-center gap-6 text-xs text-slate-500 dark:text-slate-400 font-semibold">
+          {/* Planetary Telemetry Counters */}
+          <div className="pt-8 flex flex-wrap items-center justify-center gap-6 sm:gap-10 text-xs text-slate-400 font-bold">
+            <div className="flex items-center gap-2">
+              <Globe className="w-4 h-4 text-cyan-400" />
+              <span>7 Planetary Worlds</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Network className="w-4 h-4 text-emerald-400" />
+              <span>Interactive Skill Trees</span>
+            </div>
             <div className="flex items-center gap-2">
               <Flame className="w-4 h-4 text-orange-500 fill-orange-500" />
-              <span>14,000+ Active Streaks Kept</span>
+              <span>Celestial Streaks</span>
             </div>
             <div className="flex items-center gap-2">
-              <Zap className="w-4 h-4 text-amber-500 fill-amber-500" />
-              <span>1.2M+ XP Points Earned</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
-              <span>4.9 / 5 Average Course Rating</span>
+              <Bot className="w-4 h-4 text-violet-400" />
+              <span>5 AI Mentor Modes</span>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Feature Showcase Grid: The 4 Pillars */}
-      <section className="py-16 bg-slate-100/50 dark:bg-slate-900/40 border-y border-slate-200/80 dark:border-slate-800/80">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-3xl mx-auto mb-16">
-            <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-900 dark:text-white mb-4">
-              Designed for Deep Focus & Joy
+      {/* The 7 Learning Worlds Showcase */}
+      <section className="py-20 relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
+        <div className="text-center space-y-2">
+          <span className="text-xs font-extrabold uppercase tracking-widest text-cyan-400">
+            Celestial Categories
+          </span>
+          <h2 className="text-3xl sm:text-4xl font-extrabold text-white">
+            The Seven Learning Worlds
+          </h2>
+          <p className="text-xs sm:text-sm text-slate-400 max-w-xl mx-auto">
+            Not ordinary course categories. Each world has its own identity, skill progression trees, and rewards.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {[
+            { title: 'Programming World', icon: Terminal, color: '#38bdf8', desc: 'Algorithms, TypeScript, Rust, and systems architecture.' },
+            { title: 'Technology World', icon: Cpu, color: '#818cf8', desc: 'Autonomous AI, cloud fabrics, vector DBs, and cyber defense.' },
+            { title: 'Design World', icon: Palette, color: '#f43f5e', desc: 'Spatial UI, generative interfaces, and fluid micro-interactions.' },
+            { title: 'Business World', icon: Briefcase, color: '#10b981', desc: 'Venture architecture, unit economics, and exponential growth.' },
+            { title: 'Science World', icon: Atom, color: '#a855f7', desc: 'Astrophysics, neuro-computation, and synthetic biology.' },
+            { title: 'Personal Development World', icon: Sparkles, color: '#f59e0b', desc: 'Peak cognitive flow states, mental models, and deep focus.' },
+            { title: 'Language World', icon: Globe, color: '#06b6d4', desc: 'Neural linguistics, polyglot protocols, and global fluency.' },
+          ].map((w, i) => {
+            const Icon = w.icon;
+            return (
+              <div
+                key={i}
+                onClick={() => setActiveTab('worlds')}
+                className="p-6 rounded-3xl bg-slate-900/60 border border-slate-800 hover:border-cyan-500/50 backdrop-blur-md shadow-lg transition-all cursor-pointer group flex flex-col justify-between"
+              >
+                <div>
+                  <div
+                    className="w-12 h-12 rounded-2xl flex items-center justify-center mb-4 border"
+                    style={{ backgroundColor: `${w.color}20`, borderColor: `${w.color}40`, color: w.color }}
+                  >
+                    <Icon className="w-6 h-6" />
+                  </div>
+                  <h3 className="text-base font-extrabold text-white mb-2 group-hover:text-cyan-300 transition-colors">
+                    {w.title}
+                  </h3>
+                  <p className="text-xs text-slate-400 line-clamp-2">
+                    {w.desc}
+                  </p>
+                </div>
+                <div className="pt-4 mt-4 border-t border-slate-800 text-xs font-bold text-cyan-400 flex items-center justify-between">
+                  <span>Enter World</span>
+                  <span>→</span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* Pillars of NOVA: Skill Trees, AI Mentors, Quests */}
+      <section className="py-16 bg-slate-900/40 border-y border-slate-800/80">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
+          <div className="text-center space-y-2">
+            <span className="text-xs font-extrabold uppercase tracking-widest text-violet-400">
+              Ecosystem Architecture
+            </span>
+            <h2 className="text-3xl sm:text-4xl font-extrabold text-white">
+              Built Different. Never a Boring Dashboard.
             </h2>
-            <p className="text-slate-600 dark:text-slate-300">
-              We eliminated the boring corporate LMS clutter and engineered an experience that makes you say: <em>"Just one more lesson!"</em>
-            </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {/* Pillar 1 */}
-            <div className="p-6 rounded-3xl bg-white dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700/60 shadow-sm hover:shadow-lg transition-all group">
-              <div className="w-12 h-12 rounded-2xl bg-orange-500/10 text-orange-500 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
-                <Flame className="w-6 h-6 fill-orange-500" />
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div className="p-8 rounded-3xl bg-slate-900/80 border border-slate-800 space-y-4">
+              <div className="w-12 h-12 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 flex items-center justify-center">
+                <Network className="w-6 h-6" />
               </div>
-              <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">
-                Addictive Gamification
-              </h3>
-              <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
-                XP multipliers, daily streak freezes, achievement trophies, and league leaderboards that celebrate your consistency.
+              <h3 className="text-xl font-extrabold text-white">Interactive Skill Trees</h3>
+              <p className="text-xs text-slate-300 leading-relaxed">
+                Track mastery visually across connected nodes. Identify prerequisite gaps before launching complex missions.
               </p>
             </div>
 
-            {/* Pillar 2 */}
-            <div className="p-6 rounded-3xl bg-white dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700/60 shadow-sm hover:shadow-lg transition-all group">
-              <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
-                <BookOpen className="w-6 h-6" />
-              </div>
-              <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">
-                Notion-Clean Blocks
-              </h3>
-              <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
-                Modular markdown lessons, interactive code sandboxes, personal sticky notes, and toggleable syllabus trees.
-              </p>
-            </div>
-
-            {/* Pillar 3 */}
-            <div className="p-6 rounded-3xl bg-white dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700/60 shadow-sm hover:shadow-lg transition-all group">
-              <div className="w-12 h-12 rounded-2xl bg-purple-500/10 text-purple-500 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
+            <div className="p-8 rounded-3xl bg-slate-900/80 border border-slate-800 space-y-4">
+              <div className="w-12 h-12 rounded-2xl bg-violet-500/10 border border-violet-500/30 text-violet-400 flex items-center justify-center">
                 <Bot className="w-6 h-6" />
               </div>
-              <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">
-                Lumina AI Personal Tutor
-              </h3>
-              <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
-                Ask for intuitive analogies, incremental hints, real-world industry examples, or generate custom 4-week study paths.
+              <h3 className="text-xl font-extrabold text-white">NOVA AI Mentor (5 Modes)</h3>
+              <p className="text-xs text-slate-300 leading-relaxed">
+                Explain Mode, Practice Mode, Challenge Mode, Revision Mode, and Exam Mode with intelligent pedagogical reasoning.
               </p>
             </div>
 
-            {/* Pillar 4 */}
-            <div className="p-6 rounded-3xl bg-white dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700/60 shadow-sm hover:shadow-lg transition-all group">
-              <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
-                <Award className="w-6 h-6" />
+            <div className="p-8 rounded-3xl bg-slate-900/80 border border-slate-800 space-y-4">
+              <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-400 flex items-center justify-center">
+                <Terminal className="w-6 h-6" />
               </div>
-              <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">
-                Coursera-Grade Rigor
-              </h3>
-              <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
-                Practical code assignments with rubric grading, video playback speed controls, interactive quizzes, and certificates.
+              <h3 className="text-xl font-extrabold text-white">6-Stage Quest Engine</h3>
+              <p className="text-xs text-slate-300 leading-relaxed">
+                From concept discovery and visual diagrams to live coding sandboxes and adaptive evaluation duels.
               </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Featured Courses Spotlight */}
-      <section className="py-20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col md:flex-row items-start md:items-end justify-between mb-12">
-            <div>
-              <div className="text-indigo-600 dark:text-indigo-400 font-bold text-xs uppercase tracking-wider mb-2">
-                Master Top In-Demand Skills
-              </div>
-              <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-900 dark:text-white">
-                Featured Masterclasses
-              </h2>
-            </div>
-            <button
-              onClick={() => setActiveTab('explore')}
-              className="mt-4 md:mt-0 font-bold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1.5 text-sm"
-            >
-              <span>Explore All Courses</span>
-              <ArrowRight className="w-4 h-4" />
-            </button>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {/* Card 1 */}
-            <div
-              onClick={() => onExploreCourse('course-ai-agentic')}
-              className="group cursor-pointer rounded-3xl overflow-hidden bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/70 shadow-sm hover:shadow-xl transition-all flex flex-col"
-            >
-              <div className="relative h-48 overflow-hidden">
-                <img
-                  src="https://images.unsplash.com/photo-1677442136019-21780efad99a?auto=format&fit=crop&w=800&q=80"
-                  alt="Full-Stack AI Engineering"
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                />
-                <span className="absolute top-3 left-3 px-3 py-1 text-xs font-extrabold rounded-full bg-indigo-600 text-white shadow-md">
-                  Intermediate
-                </span>
-                <span className="absolute top-3 right-3 px-2.5 py-1 text-xs font-bold rounded-full bg-slate-950/80 backdrop-blur-md text-amber-400 flex items-center gap-1">
-                  <Star className="w-3.5 h-3.5 fill-amber-400" />
-                  4.9
-                </span>
-              </div>
-              <div className="p-6 flex-1 flex flex-col justify-between">
-                <div>
-                  <div className="text-xs font-bold text-indigo-600 dark:text-indigo-400 mb-2">
-                    AI & Machine Learning
-                  </div>
-                  <h3 className="text-lg font-extrabold text-slate-900 dark:text-white mb-2 group-hover:text-indigo-500 transition-colors">
-                    Full-Stack AI Engineering: From RAG to Autonomous Agents
-                  </h3>
-                  <p className="text-xs text-slate-600 dark:text-slate-300 line-clamp-2 mb-4">
-                    Master modern AI architectures: vector search, hybrid retrieval, agent tool-calling, and production deployment.
-                  </p>
-                </div>
-                <div className="pt-4 border-t border-slate-100 dark:border-slate-700/60 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
-                  <span>Dr. Sarah Chen</span>
-                  <span className="font-bold text-indigo-600 dark:text-indigo-400 flex items-center gap-1">
-                    Start Learning <ArrowRight className="w-3.5 h-3.5" />
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Card 2 */}
-            <div
-              onClick={() => onExploreCourse('course-design-systems')}
-              className="group cursor-pointer rounded-3xl overflow-hidden bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/70 shadow-sm hover:shadow-xl transition-all flex flex-col"
-            >
-              <div className="relative h-48 overflow-hidden">
-                <img
-                  src="https://images.unsplash.com/photo-1507238691740-187a5b1d37b8?auto=format&fit=crop&w=800&q=80"
-                  alt="Modern UI/UX Design Systems"
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                />
-                <span className="absolute top-3 left-3 px-3 py-1 text-xs font-extrabold rounded-full bg-emerald-600 text-white shadow-md">
-                  Beginner
-                </span>
-                <span className="absolute top-3 right-3 px-2.5 py-1 text-xs font-bold rounded-full bg-slate-950/80 backdrop-blur-md text-amber-400 flex items-center gap-1">
-                  <Star className="w-3.5 h-3.5 fill-amber-400" />
-                  4.95
-                </span>
-              </div>
-              <div className="p-6 flex-1 flex flex-col justify-between">
-                <div>
-                  <div className="text-xs font-bold text-emerald-600 dark:text-emerald-400 mb-2">
-                    UI/UX Design
-                  </div>
-                  <h3 className="text-lg font-extrabold text-slate-900 dark:text-white mb-2 group-hover:text-indigo-500 transition-colors">
-                    Modern UI/UX Design Systems with Tailwind & Figma
-                  </h3>
-                  <p className="text-xs text-slate-600 dark:text-slate-300 line-clamp-2 mb-4">
-                    Build scalable, accessible, and delightful design systems used by modern high-growth tech companies.
-                  </p>
-                </div>
-                <div className="pt-4 border-t border-slate-100 dark:border-slate-700/60 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
-                  <span>Elena Rostova</span>
-                  <span className="font-bold text-indigo-600 dark:text-indigo-400 flex items-center gap-1">
-                    Start Learning <ArrowRight className="w-3.5 h-3.5" />
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Card 3 */}
-            <div
-              onClick={() => onExploreCourse('course-cyber-security')}
-              className="group cursor-pointer rounded-3xl overflow-hidden bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/70 shadow-sm hover:shadow-xl transition-all flex flex-col"
-            >
-              <div className="relative h-48 overflow-hidden">
-                <img
-                  src="https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?auto=format&fit=crop&w=800&q=80"
-                  alt="Cybersecurity Fundamentals"
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                />
-                <span className="absolute top-3 left-3 px-3 py-1 text-xs font-extrabold rounded-full bg-rose-600 text-white shadow-md">
-                  Intermediate
-                </span>
-                <span className="absolute top-3 right-3 px-2.5 py-1 text-xs font-bold rounded-full bg-slate-950/80 backdrop-blur-md text-amber-400 flex items-center gap-1">
-                  <Star className="w-3.5 h-3.5 fill-amber-400" />
-                  4.92
-                </span>
-              </div>
-              <div className="p-6 flex-1 flex flex-col justify-between">
-                <div>
-                  <div className="text-xs font-bold text-rose-600 dark:text-rose-400 mb-2">
-                    Cybersecurity
-                  </div>
-                  <h3 className="text-lg font-extrabold text-slate-900 dark:text-white mb-2 group-hover:text-indigo-500 transition-colors">
-                    Cybersecurity & Threat Defense for Modern Applications
-                  </h3>
-                  <p className="text-xs text-slate-600 dark:text-slate-300 line-clamp-2 mb-4">
-                    Defend web apps against OWASP Top 10 vulnerabilities, zero-day attacks, and supply-chain compromises.
-                  </p>
-                </div>
-                <div className="pt-4 border-t border-slate-100 dark:border-slate-700/60 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
-                  <span>Marcus Vance</span>
-                  <span className="font-bold text-indigo-600 dark:text-indigo-400 flex items-center gap-1">
-                    Start Learning <ArrowRight className="w-3.5 h-3.5" />
-                  </span>
-                </div>
-              </div>
             </div>
           </div>
         </div>
       </section>
 
       {/* Call to Action Banner */}
-      <section className="py-20 bg-gradient-to-tr from-indigo-900 via-indigo-950 to-slate-950 text-white text-center relative overflow-hidden">
-        <div className="relative z-10 max-w-4xl mx-auto px-4 sm:px-6">
-          <div className="w-16 h-16 rounded-3xl bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center mx-auto mb-6">
-            <Flame className="w-8 h-8 text-orange-400 fill-orange-400 animate-pulse-subtle" />
-          </div>
-          <h2 className="text-3xl sm:text-5xl font-extrabold mb-4">
-            Your Daily Learning Streak Starts Today.
+      <section className="py-20 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-8">
+        <div className="p-10 sm:p-14 rounded-3xl bg-gradient-to-r from-cyan-950 via-slate-900 to-indigo-950 border border-cyan-500/40 shadow-2xl relative overflow-hidden space-y-6">
+          <h2 className="text-3xl sm:text-5xl font-extrabold text-white tracking-tight">
+            Ready to Begin Your Cosmic Ascent?
           </h2>
-          <p className="text-slate-300 text-lg mb-8 max-w-xl mx-auto">
-            Join thousands of curious software engineers, designers, and builders who turn small 15-minute daily sessions into mastery.
+          <p className="text-sm sm:text-base text-slate-300 max-w-xl mx-auto">
+            Join thousands of visionary learners exploring the next generation of knowledge.
           </p>
           <button
             onClick={handleStart}
-            className="px-8 py-4 rounded-2xl font-extrabold text-slate-950 bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-500 hover:opacity-95 shadow-xl shadow-amber-500/25 transition-all text-base"
+            className="px-8 py-4 rounded-2xl font-extrabold text-slate-950 bg-cyan-400 hover:bg-cyan-300 shadow-xl shadow-cyan-400/40 transition-all text-sm inline-flex items-center gap-2 hover:scale-105"
           >
-            {user ? 'Enter Your Learning Dashboard' : 'Claim Your Free Account Now'}
+            <span>Enter the Universe Now</span>
+            <ArrowRight className="w-4 h-4" />
           </button>
         </div>
       </section>

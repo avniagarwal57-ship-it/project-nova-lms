@@ -2,19 +2,21 @@ import React from 'react';
 import { useAuth } from '../../context/AuthContext';
 import {
   LayoutDashboard,
-  Compass,
-  BookOpen,
-  Route,
+  Globe,
+  Network,
+  Bot,
+  Zap,
   Trophy,
   Users,
-  Bot,
+  User,
   PlusCircle,
   FileCheck2,
   ShieldAlert,
   Settings,
   Sparkles,
-  HelpCircle,
-  X
+  BookOpen,
+  X,
+  Code2,
 } from 'lucide-react';
 import { playClickSound } from '../../utils/sound';
 
@@ -37,7 +39,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, isOpe
   const navItemClass = (tab: string) => `
     flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all group
     ${activeTab === tab
-      ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
+      ? 'bg-gradient-to-r from-cyan-600 to-indigo-600 text-white shadow-lg shadow-cyan-600/25'
       : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60'
     }
   `;
@@ -48,7 +50,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, isOpe
       {isOpen && (
         <div
           onClick={onClose}
-          className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm md:hidden animate-fadeIn"
+          className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm md:hidden animate-fadeIn"
         />
       )}
 
@@ -60,19 +62,21 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, isOpe
           ${isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
         `}
       >
-        <div className="flex flex-col gap-6">
+        <div className="flex flex-col gap-5">
           {/* Top Brand Header */}
           <div className="flex items-center justify-between px-2 pt-2">
             <button
               onClick={() => handleNav('landing')}
               className="flex items-center gap-2.5 text-left group"
             >
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 to-purple-600 flex items-center justify-center text-white shadow-md shadow-indigo-500/30 group-hover:scale-105 transition-transform">
-                <Sparkles className="w-5 h-5" />
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-cyan-500 via-indigo-600 to-violet-500 flex items-center justify-center text-white shadow-lg shadow-cyan-500/25 group-hover:scale-105 transition-transform">
+                <Sparkles className="w-5 h-5 text-white" />
               </div>
-              <span className="font-extrabold text-lg tracking-tight text-slate-900 dark:text-white">
-                Quest<span className="text-indigo-600 dark:text-indigo-400">Learn</span>
-              </span>
+              <div>
+                <span className="font-extrabold text-lg tracking-tight text-slate-900 dark:text-white">
+                  NOVA<span className="text-cyan-500 dark:text-cyan-400"> Universe</span>
+                </span>
+              </div>
             </button>
             <button
               onClick={onClose}
@@ -83,81 +87,88 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, isOpe
           </div>
 
           {/* Navigation Links */}
-          <div className="space-y-6 overflow-y-auto max-h-[calc(100vh-220px)] pr-1">
-            {/* Core Learning Experience */}
+          <div className="space-y-6 overflow-y-auto max-h-[calc(100vh-210px)] pr-1">
+            {/* Core Universe Navigation */}
             <div>
-              <div className="px-3 mb-2 text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-                Learner Hub
+              <div className="px-3 mb-2 text-[10px] font-extrabold uppercase tracking-widest text-slate-400 dark:text-slate-500">
+                Command & Worlds
               </div>
               <nav className="space-y-1">
                 <button
                   onClick={() => handleNav('dashboard')}
                   className={navItemClass('dashboard')}
                 >
-                  <LayoutDashboard className="w-4 h-4" />
-                  <span>Dashboard</span>
+                  <LayoutDashboard className="w-4 h-4 text-cyan-500" />
+                  <span>Command Center</span>
                 </button>
                 <button
-                  onClick={() => handleNav('explore')}
-                  className={navItemClass('explore')}
+                  onClick={() => handleNav('worlds')}
+                  className={navItemClass('worlds')}
                 >
-                  <Compass className="w-4 h-4" />
-                  <span>Explore Courses</span>
+                  <Globe className="w-4 h-4 text-indigo-400" />
+                  <span>Learning Worlds</span>
                 </button>
                 <button
-                  onClick={() => handleNav('my-learning')}
-                  className={navItemClass('my-learning')}
+                  onClick={() => handleNav('skill-tree')}
+                  className={navItemClass('skill-tree')}
                 >
-                  <BookOpen className="w-4 h-4" />
-                  <span>My Learning</span>
+                  <Network className="w-4 h-4 text-emerald-400" />
+                  <span>Skill Tree</span>
                 </button>
                 <button
-                  onClick={() => handleNav('learning-paths')}
-                  className={navItemClass('learning-paths')}
+                  onClick={() => handleNav('lesson-player')}
+                  className={navItemClass('lesson-player')}
                 >
-                  <Route className="w-4 h-4" />
-                  <span>Learning Paths</span>
+                  <Code2 className="w-4 h-4 text-purple-400" />
+                  <span>Learning Studio</span>
                 </button>
               </nav>
             </div>
 
-            {/* Gamification Hub */}
+            {/* AI & Intelligence */}
             <div>
-              <div className="px-3 mb-2 text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-                Gamification
+              <div className="px-3 mb-2 text-[10px] font-extrabold uppercase tracking-widest text-slate-400 dark:text-slate-500">
+                Intelligence & Quests
               </div>
               <nav className="space-y-1">
                 <button
-                  onClick={() => handleNav('achievements')}
-                  className={navItemClass('achievements')}
-                >
-                  <Trophy className="w-4 h-4 text-amber-500" />
-                  <span>Trophy Case</span>
-                </button>
-                <button
-                  onClick={() => handleNav('leaderboard')}
-                  className={navItemClass('leaderboard')}
-                >
-                  <Users className="w-4 h-4 text-indigo-400" />
-                  <span>Leaderboards</span>
-                </button>
-                <button
-                  onClick={() => handleNav('ai-tutor')}
+                  onClick={() => handleNav('ai-mentor')}
                   className={`
                     flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold transition-all
-                    ${activeTab === 'ai-tutor'
-                      ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-md'
+                    ${activeTab === 'ai-mentor'
+                      ? 'bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-md'
                       : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/60'
                     }
                   `}
                 >
                   <div className="flex items-center gap-3">
-                    <Bot className="w-4 h-4 text-pink-500" />
-                    <span>Lumina AI Tutor</span>
+                    <Bot className="w-4 h-4 text-violet-400" />
+                    <span>NOVA AI Mentor</span>
                   </div>
-                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-pink-500/20 text-pink-500">
-                    AI
+                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-violet-500/20 text-violet-400">
+                    5 Modes
                   </span>
+                </button>
+                <button
+                  onClick={() => handleNav('daily-challenges')}
+                  className={navItemClass('daily-challenges')}
+                >
+                  <Zap className="w-4 h-4 text-amber-400" />
+                  <span>Daily Quests</span>
+                </button>
+                <button
+                  onClick={() => handleNav('achievements')}
+                  className={navItemClass('achievements')}
+                >
+                  <Trophy className="w-4 h-4 text-yellow-500" />
+                  <span>Achievements</span>
+                </button>
+                <button
+                  onClick={() => handleNav('social-hub')}
+                  className={navItemClass('social-hub')}
+                >
+                  <Users className="w-4 h-4 text-sky-400" />
+                  <span>Social Hub</span>
                 </button>
               </nav>
             </div>
@@ -165,10 +176,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, isOpe
             {/* Instructor / Admin Section */}
             {(user?.role === 'instructor' || user?.role === 'admin') && (
               <div>
-                <div className="px-3 mb-2 text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 flex items-center justify-between">
+                <div className="px-3 mb-2 text-[10px] font-extrabold uppercase tracking-widest text-slate-400 dark:text-slate-500 flex items-center justify-between">
                   <span>Instructor Studio</span>
-                  <span className="text-[9px] px-1.5 py-0.2 rounded bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300 font-bold uppercase">
-                    Pro
+                  <span className="text-[9px] px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-400 font-bold uppercase">
+                    Creator
                   </span>
                 </div>
                 <nav className="space-y-1">
@@ -176,15 +187,15 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, isOpe
                     onClick={() => handleNav('instructor')}
                     className={navItemClass('instructor')}
                   >
-                    <FileCheck2 className="w-4 h-4" />
-                    <span>Course & Reviews</span>
+                    <FileCheck2 className="w-4 h-4 text-purple-400" />
+                    <span>Instructor Control</span>
                   </button>
                   <button
                     onClick={() => handleNav('course-creator')}
                     className={navItemClass('course-creator')}
                   >
-                    <PlusCircle className="w-4 h-4" />
-                    <span>Create Course</span>
+                    <PlusCircle className="w-4 h-4 text-pink-400" />
+                    <span>Quest Builder</span>
                   </button>
                 </nav>
               </div>
@@ -193,10 +204,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, isOpe
             {/* Admin Center */}
             {user?.role === 'admin' && (
               <div>
-                <div className="px-3 mb-2 text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 flex items-center justify-between">
-                  <span>Admin Center</span>
-                  <span className="text-[9px] px-1.5 py-0.2 rounded bg-rose-100 dark:bg-rose-900/50 text-rose-700 dark:text-rose-300 font-bold uppercase">
-                    Admin
+                <div className="px-3 mb-2 text-[10px] font-extrabold uppercase tracking-widest text-slate-400 dark:text-slate-500 flex items-center justify-between">
+                  <span>Universe Admin</span>
+                  <span className="text-[9px] px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-400 font-bold uppercase">
+                    Overseer
                   </span>
                 </div>
                 <nav className="space-y-1">
@@ -205,7 +216,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, isOpe
                     className={navItemClass('admin')}
                   >
                     <ShieldAlert className="w-4 h-4 text-rose-500" />
-                    <span>Platform Admin</span>
+                    <span>Admin Control Center</span>
                   </button>
                 </nav>
               </div>
@@ -219,8 +230,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, isOpe
             onClick={() => handleNav('settings')}
             className={navItemClass('settings')}
           >
-            <Settings className="w-4 h-4" />
-            <span>Settings</span>
+            <Settings className="w-4 h-4 text-slate-400" />
+            <span>Settings & AI Keys</span>
           </button>
 
           {user && (
@@ -231,14 +242,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, isOpe
               <img
                 src={user.avatar}
                 alt={user.name}
-                className="w-9 h-9 rounded-full object-cover ring-2 ring-indigo-500/30"
+                className="w-9 h-9 rounded-full object-cover ring-2 ring-cyan-500/30"
               />
               <div className="flex-1 min-w-0">
                 <div className="text-xs font-bold text-slate-900 dark:text-white truncate">
                   {user.name}
                 </div>
-                <div className="text-[11px] text-slate-500 dark:text-slate-400 capitalize truncate">
-                  {user.role} • LVL {user.level}
+                <div className="text-[10px] text-cyan-600 dark:text-cyan-400 font-semibold truncate">
+                  {user.rankTitle || 'Cadet'} • LVL {user.level}
                 </div>
               </div>
             </div>
